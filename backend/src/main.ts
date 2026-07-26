@@ -1,10 +1,16 @@
+import 'reflect-metadata';
 import { ValidationPipe } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
+import { validateDatabaseEnv } from './database.config';
 
 async function bootstrap() {
   try {
-    const app = await NestFactory.create(AppModule);
+    validateDatabaseEnv();
+
+    const app = await NestFactory.create(AppModule, {
+      logger: ['error', 'warn', 'log'],
+    });
     app.setGlobalPrefix('api');
     app.enableCors();
     app.useGlobalPipes(
