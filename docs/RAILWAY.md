@@ -5,9 +5,12 @@
 截图里 **Build > Build image** 几秒就失败，通常是：
 
 1. **Root Directory 没设成 `backend`**（最常见）  
-   Railway 在仓库根目录找 `package.json`，根目录没有 Node 项目 → 构建失败。
+   Railway 在仓库根目录找 `package.json`，根目录没有 Node 项目 → 构建失败。  
+   ⚠️ 不是 Document Root，不是 `/backend`，就是纯文本：`backend`
 2. **部署分支是 `main`，但代码还在 PR 分支**  
    当前 `main` 可能只有 README，完整代码在 `cursor/recipe-recommendation-plan-f7fd`。
+3. **Builder 选错**  
+   仓库已提供 `backend/Dockerfile`，Root Directory 设为 `backend` 后会自动用 Docker 构建（更稳）。
 
 ## 修复步骤（按顺序）
 
@@ -18,26 +21,32 @@ Railway 服务 → **Settings** → **Source** → **Branch**
 - 若 PR 还没合并：选 `cursor/recipe-recommendation-plan-f7fd`
 - 若已合并：选 `main`
 
-### 2. 设置根目录（必做）
+### 2. 设置根目录（必做，90% 失败在这里）
 
-**Settings** → **Root Directory** → 填：
+点你的 **daily-recipe 服务卡片** → **Settings** → 往下找到 **Root Directory**
+
+在输入框里**只填**：
 
 ```text
 backend
 ```
 
-保存后会自动重新部署。
+注意：
+- ❌ 不要填 `/backend`
+- ❌ 不要填 `backend/`
+- ❌ 不要在 Variables 里加 ROOT_DIRECTORY
+- ✅ 就在 Settings 的 Root Directory 输入框
 
-### 3. 确认构建命令
+点 **Save**，然后 **Redeploy**。
 
-**Settings** → **Build**：
+### 3. 构建方式
 
-| 项 | 值 |
-|----|-----|
-| Build Command | `npm install && npm run build` |
-| Start Command | `npm run start:prod` |
+Root Directory = `backend` 后，Railway 会读到：
 
-（仓库里已有 `backend/railway.toml`，设好 Root Directory 后会自动读取。）
+- `backend/Dockerfile`（优先，推荐）
+- 或 `backend/railway.toml`
+
+一般不用手改 Build Command；若 UI 里能选 **Builder**，选 **Dockerfile**。
 
 ### 4. 环境变量
 
