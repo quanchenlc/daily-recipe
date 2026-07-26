@@ -1,0 +1,7 @@
+[build]
+builder = "DOCKERFILE"
+dockerfilePath = "Dockerfile"
+
+# 先去掉健康检查，避免 DB 未配对时卡 5 分钟；配好 MySQL 后可再加回：
+# [deploy]
+# healthcheckPath = "/api/health"
