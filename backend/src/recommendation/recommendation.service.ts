@@ -234,13 +234,12 @@ export class RecommendationService {
           date: expectedSlots[index].date,
           mealSlot: expectedSlots[index].mealSlot,
           dishType: expectedSlots[index].dishType,
+          dishCategory: expectedSlots[index].dishCategory,
           slotIndex: expectedSlots[index].slotIndex,
-          // Keep LLM name when present
           recipeName:
             working[index]?.recipeName?.trim() || item.recipeName,
         }));
     } else {
-      // Fill any empty names from mock while keeping LLM names
       const mockItems = this.llm.mockMenu(context).items;
       working = working.map((item, index) => {
         const name = item?.recipeName?.trim();
@@ -252,6 +251,7 @@ export class RecommendationService {
           date: expectedSlots[index].date,
           mealSlot: expectedSlots[index].mealSlot,
           dishType: expectedSlots[index].dishType,
+          dishCategory: expectedSlots[index].dishCategory,
           slotIndex: expectedSlots[index].slotIndex,
         };
       });
