@@ -48,7 +48,7 @@ npm run build
 
 ### 1. 分支
 
-**Settings → Source → Branch** = `cursor/recipe-recommendation-plan-f7fd`
+**Settings → Source → Branch** = `main`（合并后请用 main，不要用旧 feature 分支）
 
 ### 2. 环境变量（Variables）——健康检查失败多半是这里没配
 
