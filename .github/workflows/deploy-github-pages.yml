@@ -42,7 +42,7 @@ jobs:
           # Project Pages URL: https://quanchenlc.github.io/daily-recipe/
           VITE_BASE_PATH: /daily-recipe/
           # Public Railway API (override via repo secret if you change hosts)
-          VITE_API_BASE_URL: ${{ secrets.VITE_API_BASE_URL || 'https://daily-recipe-production.up.railway.app' }}
+          VITE_API_BASE_URL: https://daily-recipe-production.up.railway.app
         run: npm run build
 
       - name: Upload Pages artifact
