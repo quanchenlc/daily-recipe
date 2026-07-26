@@ -1,63 +1,63 @@
 # Railway 部署后端（NestJS + MySQL）
 
-## 常见失败原因
+## 你现在这种「2 秒就失败」= 构建目录不对
 
-截图里 **Build > Build image** 几秒就失败，通常是：
+**Build > Build image** 只跑 2 秒就红，说明 Railway 还没开始 `npm install`，通常是：
 
-1. **Root Directory 没设成 `backend`**（最常见）  
-   Railway 在仓库根目录找 `package.json`，根目录没有 Node 项目 → 构建失败。  
-   ⚠️ 不是 Document Root，不是 `/backend`，就是纯文本：`backend`
-2. **部署分支是 `main`，但代码还在 PR 分支**  
-   当前 `main` 可能只有 README，完整代码在 `cursor/recipe-recommendation-plan-f7fd`。
-3. **Builder 选错**  
-   仓库已提供 `backend/Dockerfile`，Root Directory 设为 `backend` 后会自动用 Docker 构建（更稳）。
+- 没找到 `Dockerfile` / `package.json`
+- 或 **Root Directory 填错/没生效**
 
-## 修复步骤（按顺序）
+---
 
-### 1. 确认分支
+## 方案 A（推荐，最简单）：清空 Root Directory
 
-Railway 服务 → **Settings** → **Source** → **Branch**
+仓库根目录现在有 **`Dockerfile`**，会从 `backend/` 构建，**不用**再设 Root Directory。
 
-- 若 PR 还没合并：选 `cursor/recipe-recommendation-plan-f7fd`
-- 若已合并：选 `main`
+### 步骤
 
-### 2. 设置根目录（必做，90% 失败在这里）
+1. Railway → 点 **daily-recipe** 服务 → **Settings**
+2. 找到 **Root Directory**
+3. **删掉里面的内容，留空**（不要填 `backend`，不要填 `/`）
+4. **Save**
+5. 右上角 **Deployments** → 最新失败记录 → **Redeploy**
+6. 或 **Settings** 底部 **Clear build cache** 后再 Deploy
 
-点你的 **daily-recipe 服务卡片** → **Settings** → 往下找到 **Root Directory**
-
-在输入框里**只填**：
+### 成功时 Build 日志应出现
 
 ```text
-backend
+Step 1/... : FROM node:22-alpine
+npm ci
+npm run build
 ```
 
-注意：
-- ❌ 不要填 `/backend`
-- ❌ 不要填 `backend/`
-- ❌ 不要在 Variables 里加 ROOT_DIRECTORY
-- ✅ 就在 Settings 的 Root Directory 输入框
+---
 
-点 **Save**，然后 **Redeploy**。
+## 方案 B：Root Directory = backend
 
-### 3. 构建方式
+若你想只部署 backend 子目录：
 
-Root Directory = `backend` 后，Railway 会读到：
+1. **Root Directory** 填：`backend`（无斜杠）
+2. 会用 `backend/Dockerfile`
+3. **Save** → **Redeploy**
 
-- `backend/Dockerfile`（优先，推荐）
-- 或 `backend/railway.toml`
+⚠️ 两种方案**二选一**，不要同时乱填。
 
-一般不用手改 Build Command；若 UI 里能选 **Builder**，选 **Dockerfile**。
+---
 
-### 4. 环境变量
+## 其他必查项
 
-**Variables** 里至少要有：
+### 1. 分支
+
+**Settings → Source → Branch** = `cursor/recipe-recommendation-plan-f7fd`
+
+### 2. 环境变量（Variables）
 
 ```env
-DB_HOST=...
-DB_PORT=3306
-DB_USER=...
-DB_PASSWORD=...
-DB_NAME=...
+DB_HOST=${{MySQL.MYSQLHOST}}
+DB_PORT=${{MySQL.MYSQLPORT}}
+DB_USER=${{MySQL.MYSQLUSER}}
+DB_PASSWORD=${{MySQL.MYSQLPASSWORD}}
+DB_NAME=${{MySQL.MYSQLDATABASE}}
 
 COOLDOWN_DAYS=30
 PLAN_DAYS=7
@@ -67,30 +67,34 @@ LLM_API_KEY=你的Key
 LLM_MODEL=deepseek-v4-flash
 ```
 
-MySQL 可用引用变量：
+### 3. 公网域名
 
-```env
-DB_HOST=${{MySQL.MYSQLHOST}}
-DB_PORT=${{MySQL.MYSQLPORT}}
-DB_USER=${{MySQL.MYSQLUSER}}
-DB_PASSWORD=${{MySQL.MYSQLPASSWORD}}
-DB_NAME=${{MySQL.MYSQLDATABASE}}
-```
+**Networking → Generate Domain**
 
-### 5. 生成公网域名
-
-**Networking** → **Generate Domain**
-
-### 6. 验证
-
-浏览器打开：
+### 4. 验证
 
 ```text
 https://你的域名.up.railway.app/api/health
 ```
 
-应返回 `{"ok":true,...}`
+---
 
-## 若仍失败
+## 还是失败？把日志发我
 
-点 **View logs**，把 **Build** 阶段最后 20 行发我（可打码密码）。
+1. 点 **View logs**
+2. 切到 **Build** 标签
+3. 复制**最后 30 行**发我
+
+同时发一张 **Settings 里 Root Directory 那一屏**截图。
+
+---
+
+## 常见填错对照
+
+| 你填的 | 结果 |
+|--------|------|
+| 留空（方案 A） | ✅ 用根目录 Dockerfile |
+| `backend`（方案 B） | ✅ 用 backend/Dockerfile |
+| `/backend` | ❌ 可能失败 |
+| `backend/` | ❌ 可能失败 |
+| 没保存就关掉 | ❌ 配置没生效 |
