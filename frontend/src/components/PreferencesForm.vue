@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { reactive, ref, watch } from 'vue'
 import type { MealConfig, UserPreference } from '../types'
+import CounterStepper from './CounterStepper.vue'
 
 const props = defineProps<{
   preference: UserPreference | null
@@ -69,70 +70,44 @@ function submit() {
       <span class="pref-toggle-hint">{{ open ? '收起' : '展开' }}</span>
     </button>
 
-    <p v-if="!open" class="pref-text">
-      {{ preference?.summaryText || '设置人数、口味和每餐几菜几汤，生成更贴合你家的菜单。' }}
+    <p v-if="!open" class="pref-text pref-text--compact">
+      {{ preference?.summaryText || '设置人数、口味和每餐几菜几汤。' }}
     </p>
 
     <form v-else class="pref-form" @submit.prevent="submit">
       <fieldset class="pref-fieldset">
-        <legend>家庭人数</legend>
-        <div class="pref-grid">
-          <label class="pref-input">
-            <span>成人</span>
-            <input v-model.number="form.adultsCount" type="number" min="0" max="20" />
-          </label>
-          <label class="pref-input">
-            <span>老人</span>
-            <input v-model.number="form.elderlyCount" type="number" min="0" max="10" />
-          </label>
-          <label class="pref-input">
-            <span>儿童</span>
-            <input v-model.number="form.childrenCount" type="number" min="0" max="10" />
-          </label>
+        <legend>家庭人数 <span class="pref-hint-inline">共 {{ familyTotal() }} 人</span></legend>
+        <div class="stepper-grid">
+          <CounterStepper v-model="form.adultsCount" label="成人" :min="0" :max="20" />
+          <CounterStepper v-model="form.elderlyCount" label="老人" :min="0" :max="10" />
+          <CounterStepper v-model="form.childrenCount" label="儿童" :min="0" :max="10" />
         </div>
-        <p class="pref-hint">共 {{ familyTotal() }} 人用餐</p>
       </fieldset>
 
       <label class="pref-textarea">
         <span>口味偏好</span>
         <textarea
           v-model="form.flavorNotes"
-          rows="3"
-          placeholder="例如：偏清淡、少辣、不吃香菜、喜欢粤菜…"
+          rows="2"
+          placeholder="偏清淡、少辣、不吃香菜…"
         />
       </label>
 
       <fieldset class="pref-fieldset">
         <legend>每餐结构</legend>
-        <div class="meal-config-block">
-          <p class="meal-config-title">午餐</p>
-          <div class="pref-grid">
-            <label class="pref-input">
-              <span>菜</span>
-              <input v-model.number="form.lunchDishes" type="number" min="0" max="6" />
-            </label>
-            <label class="pref-input">
-              <span>汤</span>
-              <input v-model.number="form.lunchSoups" type="number" min="0" max="4" />
-            </label>
-          </div>
+        <div class="meal-config-row">
+          <span class="meal-config-title">午餐</span>
+          <CounterStepper v-model="form.lunchDishes" label="菜" :min="0" :max="6" />
+          <CounterStepper v-model="form.lunchSoups" label="汤" :min="0" :max="4" />
         </div>
-        <div class="meal-config-block">
-          <p class="meal-config-title">晚餐</p>
-          <div class="pref-grid">
-            <label class="pref-input">
-              <span>菜</span>
-              <input v-model.number="form.dinnerDishes" type="number" min="0" max="6" />
-            </label>
-            <label class="pref-input">
-              <span>汤</span>
-              <input v-model.number="form.dinnerSoups" type="number" min="0" max="4" />
-            </label>
-          </div>
+        <div class="meal-config-row">
+          <span class="meal-config-title">晚餐</span>
+          <CounterStepper v-model="form.dinnerDishes" label="菜" :min="0" :max="6" />
+          <CounterStepper v-model="form.dinnerSoups" label="汤" :min="0" :max="4" />
         </div>
       </fieldset>
 
-      <button type="submit" class="btn btn-primary btn-block" :disabled="saving || familyTotal() < 1">
+      <button type="submit" class="btn btn-primary btn-block btn-compact" :disabled="saving || familyTotal() < 1">
         {{ saving ? '保存中…' : '保存设置' }}
       </button>
     </form>

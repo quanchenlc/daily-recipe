@@ -1,10 +1,10 @@
 <script setup lang="ts">
 import type { PlanItem } from '../types'
-import { dishTypeLabel, mealLabel } from '../utils/date'
 
 defineProps<{
   item: PlanItem
   busy: boolean
+  compact?: boolean
 }>()
 
 defineEmits<{
@@ -14,41 +14,42 @@ defineEmits<{
 </script>
 
 <template>
-  <article class="meal-item" :class="{ 'meal-item--soup': item.dishType === 'soup' }">
-    <div class="meal-meta">
-      <span class="meal-slot">{{ mealLabel(item.mealSlot) }}</span>
-      <span class="meal-kind">{{ dishTypeLabel(item.dishType) }}</span>
-      <span v-if="item.recipe.cookMinutes" style="color: var(--ink-soft); font-size: 0.8rem">
-        {{ item.recipe.cookMinutes }} 分钟
-      </span>
+  <article
+    class="meal-item"
+    :class="{
+      'meal-item--soup': item.dishType === 'soup',
+      'meal-item--compact': compact !== false,
+    }"
+  >
+    <div class="meal-main">
+      <span class="meal-kind">{{ item.dishType === 'soup' ? '汤' : '菜' }}</span>
+      <div class="meal-body">
+        <h3 class="meal-name">{{ item.recipe.name }}</h3>
+        <p v-if="item.recipe.tags?.length" class="meal-tags-inline">
+          {{ item.recipe.tags.slice(0, 2).join(' · ') }}
+          <span v-if="item.recipe.cookMinutes" class="meal-time">{{ item.recipe.cookMinutes }}分</span>
+        </p>
+      </div>
     </div>
-
-    <h3 class="meal-name">{{ item.recipe.name }}</h3>
-
-    <ul v-if="item.recipe.tags?.length" class="meal-tags">
-      <li v-for="tag in item.recipe.tags.slice(0, 3)" :key="tag">{{ tag }}</li>
-    </ul>
-
-    <p v-if="item.reason" style="margin: 0; color: var(--ink-soft); font-size: 0.84rem; line-height: 1.5">
-      {{ item.reason }}
-    </p>
 
     <div class="meal-actions">
       <button
         type="button"
-        class="btn btn-soft btn-tiny"
+        class="btn btn-soft btn-tiny btn-icon"
         :disabled="busy"
+        :title="busy ? '更换中' : '换一道'"
         @click="$emit('reroll')"
       >
-        {{ busy ? '更换中…' : '换一道' }}
+        {{ busy ? '…' : '换' }}
       </button>
       <button
         type="button"
-        class="btn btn-soft btn-tiny"
+        class="btn btn-soft btn-tiny btn-icon"
         :disabled="busy"
+        title="点评"
         @click="$emit('feedback')"
       >
-        点评
+        评
       </button>
     </div>
   </article>
