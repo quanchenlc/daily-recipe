@@ -1,8 +1,11 @@
 export type MealSlot = 'lunch' | 'dinner';
+export type DishType = 'dish' | 'soup';
 
 export interface LlmMenuItem {
   date: string;
   mealSlot: MealSlot;
+  dishType: DishType;
+  slotIndex?: number;
   recipeName: string;
   reason?: string;
   description?: string;
@@ -17,10 +20,19 @@ export interface LlmMenuResult {
   items: LlmMenuItem[];
 }
 
+import { MealConfig } from '../preferences/preference.types';
+
 export interface RecommendContext {
   weekStart: string;
   days: number;
   mealSlots: MealSlot[];
+  mealConfig: MealConfig;
+  familyComposition: {
+    adults: number;
+    elderly: number;
+    children: number;
+  };
+  flavorNotes?: string;
   blockedRecipeNames: string[];
   knownRecipes: Array<{
     name: string;
@@ -36,6 +48,8 @@ export interface RecommendContext {
   target?: {
     date: string;
     mealSlot: MealSlot;
+    dishType: DishType;
+    slotIndex: number;
     avoidNames: string[];
   };
 }

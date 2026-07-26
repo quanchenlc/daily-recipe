@@ -1,4 +1,4 @@
-import type { UserPreference, WeekPlan } from '../types'
+import type { UpdatePreferencePayload, UserPreference, WeekPlan } from '../types'
 
 /** Local dev uses Vite proxy `/api`. Production uses absolute API origin. */
 const API_BASE = (import.meta.env.VITE_API_BASE_URL as string | undefined)?.replace(
@@ -64,4 +64,11 @@ export function submitFeedback(
 
 export function getPreferences() {
   return request<UserPreference>('/preferences')
+}
+
+export function updatePreferences(payload: UpdatePreferencePayload) {
+  return request<UserPreference>('/preferences', {
+    method: 'PATCH',
+    body: JSON.stringify(payload),
+  })
 }

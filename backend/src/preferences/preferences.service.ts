@@ -1,9 +1,15 @@
-import { Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Feedback } from '../recipes/entities/feedback.entity';
 import { Recipe } from '../recipes/entities/recipe.entity';
+import { UpdatePreferenceDto } from './dto/update-preference.dto';
 import { UserPreference } from './entities/user-preference.entity';
+import {
+  DEFAULT_MEAL_CONFIG,
+  MealConfig,
+  itemsPerDay,
+} from './preference.types';
 
 const DEFAULT_KEY = 'default';
 
@@ -23,11 +29,45 @@ export class PreferencesService {
           likes: [],
           dislikes: [],
           constraints: [],
+          adultsCount: 2,
+          elderlyCount: 0,
+          childrenCount: 0,
+          flavorNotes: null,
+          mealConfig: DEFAULT_MEAL_CONFIG,
           summaryText: '暂无偏好，按家常均衡口味推荐。',
         }),
       );
     }
-    return pref;
+    return this.normalize(pref);
+  }
+
+  async update(dto: UpdatePreferenceDto) {
+    const pref = await this.getOrCreate();
+    const adults = dto.adultsCount ?? pref.adultsCount;
+    const elderly = dto.elderlyCount ?? pref.elderlyCount;
+    const children = dto.childrenCount ?? pref.childrenCount;
+
+    if (adults + elderly + children < 1) {
+      throw new BadRequestException('家庭人数至少为 1 人');
+    }
+
+    if (dto.adultsCount !== undefined) pref.adultsCount = dto.adultsCount;
+    if (dto.elderlyCount !== undefined) pref.elderlyCount = dto.elderlyCount;
+    if (dto.childrenCount !== undefined) pref.childrenCount = dto.childrenCount;
+    if (dto.flavorNotes !== undefined) pref.flavorNotes = dto.flavorNotes.trim() || null;
+    if (dto.mealConfig !== undefined) {
+      pref.mealConfig = this.normalizeMealConfig(dto.mealConfig);
+      if (itemsPerDay(pref.mealConfig) < 1) {
+        throw new BadRequestException('每餐至少需要 1 道菜或 1 道汤');
+      }
+    }
+
+    pref.summaryText = this.buildSummary(pref);
+    return this.prefsRepo.save(pref);
+  }
+
+  getMealConfig(pref: UserPreference): MealConfig {
+    return this.normalizeMealConfig(pref.mealConfig);
   }
 
   async applyFeedback(recipe: Recipe, feedback: Feedback) {
@@ -55,6 +95,28 @@ export class PreferencesService {
     pref.constraints = [...constraints];
     pref.summaryText = this.buildSummary(pref);
     return this.prefsRepo.save(pref);
+  }
+
+  private normalize(pref: UserPreference) {
+    pref.mealConfig = this.normalizeMealConfig(pref.mealConfig);
+    if (!pref.adultsCount && pref.adultsCount !== 0) pref.adultsCount = 2;
+    return pref;
+  }
+
+  private normalizeMealConfig(config: MealConfig | null | undefined): MealConfig {
+    if (!config?.lunch || !config?.dinner) {
+      return { ...DEFAULT_MEAL_CONFIG };
+    }
+    return {
+      lunch: {
+        dishes: Math.min(6, Math.max(0, config.lunch.dishes ?? 0)),
+        soups: Math.min(4, Math.max(0, config.lunch.soups ?? 0)),
+      },
+      dinner: {
+        dishes: Math.min(6, Math.max(0, config.dinner.dishes ?? 0)),
+        soups: Math.min(4, Math.max(0, config.dinner.soups ?? 0)),
+      },
+    };
   }
 
   private extractSignals(recipe: Recipe, feedback: Feedback) {
@@ -85,6 +147,19 @@ export class PreferencesService {
 
   private buildSummary(pref: UserPreference) {
     const parts: string[] = [];
+    const total = pref.adultsCount + pref.elderlyCount + pref.childrenCount;
+    parts.push(
+      `家庭 ${total} 人（成人 ${pref.adultsCount}，老人 ${pref.elderlyCount}，儿童 ${pref.childrenCount}）`,
+    );
+
+    const mealConfig = this.normalizeMealConfig(pref.mealConfig);
+    parts.push(
+      `午餐 ${mealConfig.lunch.dishes} 菜 ${mealConfig.lunch.soups} 汤，晚餐 ${mealConfig.dinner.dishes} 菜 ${mealConfig.dinner.soups} 汤`,
+    );
+
+    if (pref.flavorNotes?.trim()) {
+      parts.push(`口味：${pref.flavorNotes.trim()}`);
+    }
     if (pref.likes?.length) parts.push(`喜欢：${pref.likes.slice(0, 12).join('、')}`);
     if (pref.dislikes?.length) {
       parts.push(`不喜欢：${pref.dislikes.slice(0, 12).join('、')}`);
@@ -92,6 +167,6 @@ export class PreferencesService {
     if (pref.constraints?.length) {
       parts.push(`约束：${pref.constraints.slice(0, 12).join('、')}`);
     }
-    return parts.length ? parts.join('；') : '暂无偏好，按家常均衡口味推荐。';
+    return parts.join('；');
   }
 }

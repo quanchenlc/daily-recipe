@@ -8,7 +8,12 @@ import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Between, Repository } from 'typeorm';
 import { LlmService } from '../llm/llm.service';
-import { LlmMenuItem, MealSlot, RecommendContext } from '../llm/llm.types';
+import {
+  DishType,
+  LlmMenuItem,
+  MealSlot,
+  RecommendContext,
+} from '../llm/llm.types';
 import { PlanItem } from '../plans/entities/plan-item.entity';
 import { RecommendationHistory } from '../plans/entities/recommendation-history.entity';
 import { WeekPlan } from '../plans/entities/week-plan.entity';
@@ -56,6 +61,8 @@ export class RecommendationService {
           recipeId: item.recipeId,
           serveDate: item.date,
           mealSlot: item.mealSlot,
+          dishType: item.dishType,
+          slotIndex: item.slotIndex,
           reason: item.reason ?? null,
         }),
       ),
@@ -106,6 +113,8 @@ export class RecommendationService {
     context.target = {
       date: item.serveDate,
       mealSlot: item.mealSlot,
+      dishType: item.dishType ?? 'dish',
+      slotIndex: item.slotIndex ?? 0,
       avoidNames: weekNames,
     };
     context.blockedRecipeNames = [
@@ -166,11 +175,19 @@ export class RecommendationService {
 
     const knownRecipes = await this.recipesService.findAll();
     const pref = await this.preferencesService.getOrCreate();
+    const mealConfig = this.preferencesService.getMealConfig(pref);
 
     return {
       weekStart,
       days,
       mealSlots: this.mealSlots,
+      mealConfig,
+      familyComposition: {
+        adults: pref.adultsCount,
+        elderly: pref.elderlyCount,
+        children: pref.childrenCount,
+      },
+      flavorNotes: pref.flavorNotes ?? undefined,
       blockedRecipeNames,
       knownRecipes: knownRecipes.map((r) => ({
         name: r.name,
@@ -197,26 +214,34 @@ export class RecommendationService {
       }
     }
 
-    const expectedCount = context.target ? 1 : context.days * 2;
-    let working = [...items];
+    const expectedSlots = this.llm.buildSlots(context);
+    const expectedCount = expectedSlots.length;
+    let working = this.alignItemsToSlots(items, expectedSlots);
 
     if (working.length !== expectedCount) {
       this.logger.warn(
         `LLM item count ${working.length} != expected ${expectedCount}, regenerating via mock fallback`,
       );
-      working = this.llm.mockMenu(context).items;
+      working = this.alignItemsToSlots(
+        this.llm.mockMenu(context).items,
+        expectedSlots,
+      );
     }
 
     const used = new Set<string>();
     const resolved: Array<{
       date: string;
       mealSlot: MealSlot;
+      dishType: DishType;
+      slotIndex: number;
       recipeId: string;
       reason?: string;
     }> = [];
 
-    for (const item of working.slice(0, expectedCount)) {
-      let name = item.recipeName?.trim();
+    for (let i = 0; i < expectedCount; i++) {
+      const slot = expectedSlots[i];
+      const item = working[i];
+      let name = item?.recipeName?.trim();
       if (!name) {
         throw new BadRequestException('模型返回了空菜名');
       }
@@ -236,8 +261,10 @@ export class RecommendationService {
         const replacement = this.llm.mockMenu({
           ...context,
           target: {
-            date: item.date,
-            mealSlot: item.mealSlot,
+            date: slot.date,
+            mealSlot: slot.mealSlot,
+            dishType: slot.dishType,
+            slotIndex: slot.slotIndex,
             avoidNames: [...used, ...blocked],
           },
           blockedRecipeNames: [...blocked],
@@ -271,19 +298,29 @@ export class RecommendationService {
       used.add(name.toLowerCase());
       blocked.add(name.toLowerCase());
       resolved.push({
-        date: item.date,
-        mealSlot: item.mealSlot,
+        date: slot.date,
+        mealSlot: slot.mealSlot,
+        dishType: slot.dishType,
+        slotIndex: slot.slotIndex,
         recipeId: recipe.id,
         reason,
       });
     }
 
-    if (context.target && resolved[0]) {
-      resolved[0].date = context.target.date;
-      resolved[0].mealSlot = context.target.mealSlot;
-    }
-
     return resolved;
+  }
+
+  private alignItemsToSlots(items: LlmMenuItem[], slots: ReturnType<LlmService['buildSlots']>) {
+    if (items.length === slots.length) {
+      return items.map((item, index) => ({
+        ...item,
+        date: slots[index].date,
+        mealSlot: slots[index].mealSlot,
+        dishType: slots[index].dishType,
+        slotIndex: slots[index].slotIndex,
+      }));
+    }
+    return items.slice(0, slots.length);
   }
 
   private currentMonday() {
@@ -313,6 +350,12 @@ export class RecommendationService {
     if (a.serveDate !== b.serveDate) {
       return a.serveDate.localeCompare(b.serveDate);
     }
-    return a.mealSlot.localeCompare(b.mealSlot);
+    if (a.mealSlot !== b.mealSlot) {
+      return a.mealSlot.localeCompare(b.mealSlot);
+    }
+    if ((a.dishType ?? 'dish') !== (b.dishType ?? 'dish')) {
+      return (a.dishType ?? 'dish').localeCompare(b.dishType ?? 'dish');
+    }
+    return (a.slotIndex ?? 0) - (b.slotIndex ?? 0);
   };
 }

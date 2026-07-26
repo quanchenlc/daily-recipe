@@ -5,14 +5,16 @@ import {
   getPreferences,
   rerollItem,
   submitFeedback,
+  updatePreferences,
 } from '../api/client'
-import type { PlanItem, UserPreference, WeekPlan } from '../types'
+import type { PlanItem, UpdatePreferencePayload, UserPreference, WeekPlan } from '../types'
 import { groupPlanByDay } from '../utils/date'
 
 export function useWeekPlan() {
   const plan = ref<WeekPlan | null>(null)
   const preference = ref<UserPreference | null>(null)
   const loading = ref(false)
+  const savingPrefs = ref(false)
   const busyKey = ref<string | null>(null)
   const error = ref('')
   const notice = ref('')
@@ -33,7 +35,6 @@ export function useWeekPlan() {
     } catch (e) {
       plan.value = null
       const message = e instanceof Error ? e.message : '加载失败'
-      // First visit: no plan yet — show empty state, not a hard error.
       if (message.includes('还没有菜单') || message.includes('Not Found')) {
         notice.value = '本周还没有菜单，点上方按钮生成即可'
         try {
@@ -56,11 +57,25 @@ export function useWeekPlan() {
     try {
       plan.value = await generatePlan()
       await refreshPreferences()
-      notice.value = '本周菜单已生成（午 + 晚）'
+      notice.value = '本周菜单已生成'
     } catch (e) {
       error.value = e instanceof Error ? e.message : '生成失败'
     } finally {
       loading.value = false
+    }
+  }
+
+  async function savePreferences(payload: UpdatePreferencePayload) {
+    savingPrefs.value = true
+    error.value = ''
+    try {
+      preference.value = await updatePreferences(payload)
+      notice.value = '偏好已保存，重新生成菜单会按新设置推荐'
+    } catch (e) {
+      error.value = e instanceof Error ? e.message : '保存失败'
+      throw e
+    } finally {
+      savingPrefs.value = false
     }
   }
 
@@ -70,7 +85,8 @@ export function useWeekPlan() {
     error.value = ''
     try {
       plan.value = await rerollItem(plan.value.id, item.id)
-      notice.value = `已更换：${item.serveDate} ${item.mealSlot === 'lunch' ? '午餐' : '晚餐'}`
+      const kind = item.dishType === 'soup' ? '汤' : '菜'
+      notice.value = `已更换：${item.serveDate} ${item.mealSlot === 'lunch' ? '午餐' : '晚餐'}的${kind}`
     } catch (e) {
       error.value = e instanceof Error ? e.message : '换菜失败'
     } finally {
@@ -105,11 +121,13 @@ export function useWeekPlan() {
     preference,
     days,
     loading,
+    savingPrefs,
     busyKey,
     error,
     notice,
     loadCurrent,
     generate,
+    savePreferences,
     reroll,
     feedback,
   }

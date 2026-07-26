@@ -1,4 +1,5 @@
-import { Controller, Get } from '@nestjs/common';
+import { Body, Controller, Get, Patch } from '@nestjs/common';
+import { UpdatePreferenceDto } from './dto/update-preference.dto';
 import { PreferencesService } from './preferences.service';
 
 @Controller('preferences')
@@ -8,5 +9,10 @@ export class PreferencesController {
   @Get()
   get() {
     return this.preferencesService.getOrCreate();
+  }
+
+  @Patch()
+  update(@Body() dto: UpdatePreferenceDto) {
+    return this.preferencesService.update(dto);
   }
 }

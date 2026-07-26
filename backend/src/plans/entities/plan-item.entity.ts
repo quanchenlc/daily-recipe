@@ -10,6 +10,7 @@ import { Recipe } from '../../recipes/entities/recipe.entity';
 import { WeekPlan } from './week-plan.entity';
 
 export type MealSlot = 'lunch' | 'dinner';
+export type DishType = 'dish' | 'soup';
 
 @Entity('plan_items')
 export class PlanItem {
@@ -37,6 +38,12 @@ export class PlanItem {
 
   @Column({ type: 'varchar', length: 16, name: 'meal_slot' })
   mealSlot: MealSlot;
+
+  @Column({ type: 'varchar', length: 16, name: 'dish_type', default: 'dish' })
+  dishType: DishType;
+
+  @Column({ type: 'int', name: 'slot_index', default: 0 })
+  slotIndex: number;
 
   @Column({ type: 'text', nullable: true })
   reason: string | null;

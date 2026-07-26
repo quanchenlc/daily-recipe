@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { PlanItem } from '../types'
-import { mealLabel } from '../utils/date'
+import { dishTypeLabel, mealLabel } from '../utils/date'
 
 defineProps<{
   item: PlanItem
@@ -14,9 +14,10 @@ defineEmits<{
 </script>
 
 <template>
-  <article class="meal-item">
+  <article class="meal-item" :class="{ 'meal-item--soup': item.dishType === 'soup' }">
     <div class="meal-meta">
       <span class="meal-slot">{{ mealLabel(item.mealSlot) }}</span>
+      <span class="meal-kind">{{ dishTypeLabel(item.dishType) }}</span>
       <span v-if="item.recipe.cookMinutes" style="color: var(--ink-soft); font-size: 0.8rem">
         {{ item.recipe.cookMinutes }} 分钟
       </span>

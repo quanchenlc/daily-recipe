@@ -1,4 +1,15 @@
 export type MealSlot = 'lunch' | 'dinner'
+export type DishType = 'dish' | 'soup'
+
+export interface MealSlotConfig {
+  dishes: number
+  soups: number
+}
+
+export interface MealConfig {
+  lunch: MealSlotConfig
+  dinner: MealSlotConfig
+}
 
 export interface Recipe {
   id: string
@@ -18,6 +29,8 @@ export interface PlanItem {
   recipe: Recipe
   serveDate: string
   mealSlot: MealSlot
+  dishType: DishType
+  slotIndex: number
   reason: string | null
 }
 
@@ -34,11 +47,29 @@ export interface UserPreference {
   dislikes: string[] | null
   constraints: string[] | null
   summaryText: string | null
+  adultsCount: number
+  elderlyCount: number
+  childrenCount: number
+  flavorNotes: string | null
+  mealConfig: MealConfig | null
+}
+
+export interface MealGroup {
+  dishes: PlanItem[]
+  soups: PlanItem[]
 }
 
 export interface DayMeals {
   date: string
   weekday: string
-  lunch?: PlanItem
-  dinner?: PlanItem
+  lunch: MealGroup
+  dinner: MealGroup
+}
+
+export interface UpdatePreferencePayload {
+  adultsCount?: number
+  elderlyCount?: number
+  childrenCount?: number
+  flavorNotes?: string
+  mealConfig?: MealConfig
 }
