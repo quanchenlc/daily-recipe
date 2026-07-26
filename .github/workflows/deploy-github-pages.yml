@@ -39,10 +39,10 @@ jobs:
 
       - name: Build
         env:
-          # Project Pages URL: https://<owner>.github.io/daily-recipe/
+          # Project Pages URL: https://quanchenlc.github.io/daily-recipe/
           VITE_BASE_PATH: /daily-recipe/
-          # Set repo secret VITE_API_BASE_URL to your public Nest API origin, e.g. https://xxx.onrender.com
-          VITE_API_BASE_URL: ${{ secrets.VITE_API_BASE_URL }}
+          # Public Railway API (override via repo secret if you change hosts)
+          VITE_API_BASE_URL: ${{ secrets.VITE_API_BASE_URL || 'https://daily-recipe-production.up.railway.app' }}
         run: npm run build
 
       - name: Upload Pages artifact
