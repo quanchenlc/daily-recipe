@@ -38,7 +38,19 @@ flowchart LR
 
 适合个人项目、免费起步。
 
-### A1. 部署后端（Render 示例）
+### A1. 部署后端（Render / Railway 示例）
+
+仓库根目录有可选蓝图 `render.yaml`（若平台无免费 MySQL，可把数据库放到 Railway，只把 Nest 放 Render）。
+
+**更省事的一条龙：Railway**
+
+1. 注册 [Railway](https://railway.app)
+2. New Project → Deploy from GitHub → 选本仓库
+3. 添加 **MySQL** 插件，再添加 **GitHub Repo** 服务，Root Directory 设为 `backend`
+4. Build/Start：`npm install && npm run build` / `npm run start:prod`
+5. 把 MySQL 变量映射到 `DB_HOST/PORT/USER/PASSWORD/NAME`
+
+**或 Render Web Service**
 
 1. 注册 [Render](https://render.com)
 2. New → **Web Service**，连这个 GitHub 仓库
@@ -46,7 +58,8 @@ flowchart LR
    - Root Directory: `backend`
    - Build Command: `npm install && npm run build`
    - Start Command: `npm run start:prod`
-4. 再开一个 **MySQL**（或 Render Postgres；若用 Postgres 需改 TypeORM `type`，当前代码是 MySQL）
+4. MySQL 可用 Railway/其他托管，把连接信息填进环境变量  
+   （当前代码是 MySQL；若改 Postgres 要动 TypeORM）
 5. 环境变量填：
 
 ```env
@@ -116,6 +129,7 @@ GitHub 没有长期运行 Node 服务、也没有 MySQL。
 | `frontend/.env.example` | 本地/生产环境变量说明 |
 | `frontend` 的 `VITE_API_BASE_URL` | 生产环境指向你的 Nest API |
 | `frontend` 的 `VITE_BASE_PATH=/daily-recipe/` | Pages 子路径正确加载资源 |
+| `render.yaml` | 可选：Render 后端蓝图（数据库按平台实际调整） |
 
 ---
 
