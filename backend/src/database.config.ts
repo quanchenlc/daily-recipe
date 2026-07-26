@@ -71,9 +71,35 @@ export function validateDatabaseEnv() {
   const invalidHost =
     !db.host || db.host === '127.0.0.1' || db.host === 'localhost';
 
+export function validateDatabaseEnv() {
+  if (!process.env.RAILWAY_ENVIRONMENT) {
+    return;
+  }
+
+  const config = new ConfigService(process.env);
+  const db = resolveDatabaseConfig(config);
+  const invalidHost =
+    !db.host || db.host === '127.0.0.1' || db.host === 'localhost';
+
   if (invalidHost) {
+    const present = [
+      'DB_HOST',
+      'MYSQLHOST',
+      'DATABASE_URL',
+      'MYSQL_URL',
+      'DB_PORT',
+      'MYSQLPORT',
+      'DB_USER',
+      'MYSQLUSER',
+      'DB_NAME',
+      'MYSQLDATABASE',
+    ].map((key) => `${key}=${process.env[key] ? 'set' : 'missing'}`);
+
     console.error(`
 [RAILWAY] 数据库未配置，服务无法启动。
+
+当前环境变量探测：
+${present.join('\n')}
 
 请在「后端服务 → Variables」添加（把 MySQL 换成你的数据库服务名）：
 
@@ -84,6 +110,11 @@ DB_PASSWORD=\${{MySQL.MYSQLPASSWORD}}
 DB_NAME=\${{MySQL.MYSQLDATABASE}}
 
 或在项目里：MySQL 卡片 → Connect → 连接到后端服务。
+
+检查要点：
+1. 变量要加在「后端 API 服务」，不是 MySQL 服务
+2. 引用写法不要加引号：DB_HOST=\${{MySQL.MYSQLHOST}}
+3. MySQL 卡片名字必须和引用里一致（区分大小写）
 `);
     process.exit(1);
   }
