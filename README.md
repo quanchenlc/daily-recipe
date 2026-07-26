@@ -4,43 +4,54 @@
 
 ## 技术栈
 
-- 后端：**NestJS + TypeORM + MySQL**（当前已实现 API）
-- 前端：**Vue**（稍后，先 API）
+- 后端：NestJS + TypeORM + MySQL
+- 前端：Vue 3 + Vite（手机友好周菜单页）
 - LLM：OpenAI 兼容协议（可后配 Key）
 
 ## 快速开始
 
-```bash
-# 1) 准备 MySQL 库（示例）
-# CREATE DATABASE daily_recipe CHARACTER SET utf8mb4;
-# CREATE USER 'recipe'@'%' IDENTIFIED BY 'recipe123';
-# GRANT ALL ON daily_recipe.* TO 'recipe'@'%';
+### 1) 后端
 
+```bash
+# MySQL 先建库 daily_recipe，用户示例 recipe / recipe123
 cd backend
 cp .env.example .env
 npm install
 npm run start:dev
 ```
 
-健康检查：`GET http://localhost:3000/api/health`
+后端默认：`http://localhost:3000`
 
-## 核心 API
+### 2) 前端
 
-| 方法 | 路径 | 说明 |
-|------|------|------|
-| POST | `/api/plans/generate` | 生成一周午晚餐 |
-| GET | `/api/plans/current` | 查看当前周 |
-| POST | `/api/plans/:id/items/:itemId/reroll` | 换一道 |
-| POST | `/api/recipes/:id/feedback` | 点评 |
-| GET | `/api/preferences` | 偏好 |
-| GET | `/api/recipes` | 菜谱库（模型会自动写入） |
-
-生成示例：
+另开终端：
 
 ```bash
+cd frontend
+npm install
+npm run dev
+```
+
+浏览器打开：`http://localhost:5173`  
+（Vite 已代理 `/api` → 后端 `3000`）
+
+## 页面能做什么
+
+- 一键生成本周午 + 晚菜单
+- 某一餐「换一道」
+- 点评打分，沉淀口味偏好
+- 查看当前偏好摘要
+
+## 手机怎么测（短期）
+
+1. **本机电脑预览**：按上面启动前后端，手机和电脑连同一 Wi‑Fi，用电脑局域网 IP 访问，例如 `http://192.168.x.x:5173`
+2. **Cursor 手机端**：在对话里下指令，例如「帮我打开前端流程测一遍生成/换菜/点评」，让 Agent 代跑接口并回报结果
+3. **仅测 API**：
+
+```bash
+curl http://localhost:3000/api/health
 curl -X POST http://localhost:3000/api/plans/generate \
-  -H 'Content-Type: application/json' \
-  -d '{}'
+  -H 'Content-Type: application/json' -d '{}'
 ```
 
 ## 配置 LLM
@@ -57,4 +68,4 @@ LLM_MODEL=gpt-4o-mini
 
 ## 文档
 
-完整规划与决策见 [docs/PLAN.md](./docs/PLAN.md)。
+完整规划见 [docs/PLAN.md](./docs/PLAN.md)。
