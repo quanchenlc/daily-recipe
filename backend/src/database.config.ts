@@ -71,16 +71,6 @@ export function validateDatabaseEnv() {
   const invalidHost =
     !db.host || db.host === '127.0.0.1' || db.host === 'localhost';
 
-export function validateDatabaseEnv() {
-  if (!process.env.RAILWAY_ENVIRONMENT) {
-    return;
-  }
-
-  const config = new ConfigService(process.env);
-  const db = resolveDatabaseConfig(config);
-  const invalidHost =
-    !db.host || db.host === '127.0.0.1' || db.host === 'localhost';
-
   if (invalidHost) {
     const present = [
       'DB_HOST',
