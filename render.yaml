@@ -1,0 +1,54 @@
+# Optional blueprint for Render.com (backend + MySQL).
+# Dashboard: New → Blueprint → connect this repo.
+# Frontend still deploys via GitHub Pages (see docs/DEPLOY.md).
+
+databases:
+  - name: daily-recipe-mysql
+    plan: free
+    databaseName: daily_recipe
+    user: recipe
+
+services:
+  - type: web
+    name: daily-recipe-api
+    runtime: node
+    plan: free
+    rootDir: backend
+    buildCommand: npm install && npm run build
+    startCommand: npm run start:prod
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_VERSION
+        value: "22"
+      - key: PORT
+        value: "3000"
+      - key: COOLDOWN_DAYS
+        value: "30"
+      - key: PLAN_DAYS
+        value: "7"
+      - key: DB_HOST
+        fromDatabase:
+          name: daily-recipe-mysql
+          property: host
+      - key: DB_PORT
+        fromDatabase:
+          name: daily-recipe-mysql
+          property: port
+      - key: DB_USER
+        fromDatabase:
+          name: daily-recipe-mysql
+          property: user
+      - key: DB_PASSWORD
+        fromDatabase:
+          name: daily-recipe-mysql
+          property: password
+      - key: DB_NAME
+        fromDatabase:
+          name: daily-recipe-mysql
+          property: database
+      - key: LLM_BASE_URL
+        sync: false
+      - key: LLM_API_KEY
+        sync: false
+      - key: LLM_MODEL
+        sync: false

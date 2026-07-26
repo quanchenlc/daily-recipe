@@ -1,7 +1,13 @@
 import type { UserPreference, WeekPlan } from '../types'
 
+/** Local dev uses Vite proxy `/api`. Production uses absolute API origin. */
+const API_BASE = (import.meta.env.VITE_API_BASE_URL as string | undefined)?.replace(
+  /\/$/,
+  '',
+) ?? ''
+
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
-  const response = await fetch(`/api${path}`, {
+  const response = await fetch(`${API_BASE}/api${path}`, {
     headers: {
       'Content-Type': 'application/json',
       ...(init?.headers ?? {}),

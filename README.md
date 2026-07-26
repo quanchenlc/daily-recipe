@@ -54,6 +54,25 @@ curl -X POST http://localhost:3000/api/plans/generate \
   -H 'Content-Type: application/json' -d '{}'
 ```
 
+## 手机随时打开（部署）
+
+**GitHub 可以托管前端，不能单独跑 Nest + MySQL。**
+
+推荐组合：
+
+1. **前端** → GitHub Pages（仓库已带 Actions）
+2. **后端 + MySQL** → Render / Railway 等
+
+完整步骤见：[docs/DEPLOY.md](./docs/DEPLOY.md)
+
+快速摘要：
+
+1. 把后端部署到公网，拿到例如 `https://your-api.onrender.com`
+2. GitHub 仓库 Settings → Pages → Source 选 **GitHub Actions**
+3. 添加 Actions Secret：`VITE_API_BASE_URL=https://your-api.onrender.com`
+4. 合并到 `main` 后自动发布
+5. 手机打开：`https://quanchenlc.github.io/daily-recipe/`
+
 ## 配置 LLM
 
 编辑 `backend/.env`：
