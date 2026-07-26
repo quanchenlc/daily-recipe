@@ -1,10 +1,12 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
+import DayShoppingModal from './components/DayShoppingModal.vue'
+import DishDetailModal from './components/DishDetailModal.vue'
 import FeedbackModal from './components/FeedbackModal.vue'
 import PreferencesForm from './components/PreferencesForm.vue'
 import WeekBoard from './components/WeekBoard.vue'
 import { useWeekPlan } from './composables/useWeekPlan'
-import type { PlanItem } from './types'
+import type { DayMeals, PlanItem } from './types'
 
 const {
   plan,
@@ -23,6 +25,14 @@ const {
 } = useWeekPlan()
 
 const activeItem = ref<PlanItem | null>(null)
+const detailItem = ref<PlanItem | null>(null)
+const shoppingDay = ref<DayMeals | null>(null)
+
+const familySize = computed(() => {
+  const p = preference.value
+  if (!p) return 2
+  return (p.adultsCount ?? 0) + (p.elderlyCount ?? 0) + (p.childrenCount ?? 0) || 2
+})
 
 onMounted(() => {
   void loadCurrent()
@@ -43,7 +53,7 @@ async function onFeedbackSubmit(payload: { rating: number; comment: string }) {
   <div class="app-shell">
     <header class="hero">
       <p class="brand">每日菜谱</p>
-      <p class="hero-copy">按你家人数和口味安排一周午晚餐，几菜几汤你来定。</p>
+      <p class="hero-copy">点菜看详情，点日期看当天要买什么。</p>
       <div class="hero-actions">
         <button
           type="button"
@@ -77,7 +87,7 @@ async function onFeedbackSubmit(payload: { rating: number; comment: string }) {
 
     <section v-if="!plan && !loading" class="empty">
       <h2>这周吃什么？</h2>
-      <p>先设置家庭人数和每餐几菜几汤，再点「生成本周菜单」。我会尽量 30 天内不重复。</p>
+      <p>先设置家庭人数和每餐几菜几汤，再点「生成本周菜单」。点击菜品看采购明细，点击日期汇总当天食材。</p>
     </section>
 
     <WeekBoard
@@ -86,6 +96,8 @@ async function onFeedbackSubmit(payload: { rating: number; comment: string }) {
       :busy-key="busyKey"
       @reroll="reroll"
       @feedback="activeItem = $event"
+      @detail="detailItem = $event"
+      @day-shop="shoppingDay = $event"
     />
 
     <p class="footer-note">
@@ -97,6 +109,18 @@ async function onFeedbackSubmit(payload: { rating: number; comment: string }) {
       :submitting="busyKey?.startsWith('feedback-') ?? false"
       @close="activeItem = null"
       @submit="onFeedbackSubmit"
+    />
+
+    <DishDetailModal
+      :item="detailItem"
+      :family-size="familySize"
+      @close="detailItem = null"
+    />
+
+    <DayShoppingModal
+      :day="shoppingDay"
+      :family-size="familySize"
+      @close="shoppingDay = null"
     />
   </div>
 </template>

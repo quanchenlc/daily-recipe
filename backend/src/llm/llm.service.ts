@@ -235,8 +235,9 @@ export class LlmService {
 4. 结合家庭人数、口味备注、likes/dislikes/constraints
 5. 有儿童时适当清淡少辣；有老人时避免过硬难嚼
 6. dishType 为 dish 表示主菜/配菜，soup 表示汤品；汤品 tags 应含「汤品」
-7. items 数量必须严格等于要求数量
-8. JSON schema:
+7. ingredients 每条格式必须为「食材名 数量单位」，按 familyComposition 总人数估算份量，例如「排骨 500g」「番茄 2个」「姜 3片」，禁止只写食材名
+8. items 数量必须严格等于要求数量
+9. JSON schema:
 {"weekStart":"YYYY-MM-DD","items":[{"date":"YYYY-MM-DD","mealSlot":"lunch|dinner","dishType":"dish|soup","slotIndex":0,"recipeName":"string","reason":"string","description":"string","ingredients":["string"],"tags":["string"],"cookMinutes":30,"difficulty":"简单|中等|困难"}]}`;
 
     const userPayload = {

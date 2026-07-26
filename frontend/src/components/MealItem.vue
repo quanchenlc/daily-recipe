@@ -7,9 +7,10 @@ defineProps<{
   compact?: boolean
 }>()
 
-defineEmits<{
+const emit = defineEmits<{
   reroll: []
   feedback: []
+  detail: []
 }>()
 </script>
 
@@ -21,7 +22,7 @@ defineEmits<{
       'meal-item--compact': compact !== false,
     }"
   >
-    <div class="meal-main">
+    <button type="button" class="meal-main meal-main--clickable" @click="emit('detail')">
       <span class="meal-kind">{{ item.dishType === 'soup' ? '汤' : '菜' }}</span>
       <div class="meal-body">
         <h3 class="meal-name">{{ item.recipe.name }}</h3>
@@ -30,7 +31,7 @@ defineEmits<{
           <span v-if="item.recipe.cookMinutes" class="meal-time">{{ item.recipe.cookMinutes }}分</span>
         </p>
       </div>
-    </div>
+    </button>
 
     <div class="meal-actions">
       <button
@@ -38,7 +39,7 @@ defineEmits<{
         class="btn btn-soft btn-tiny btn-icon"
         :disabled="busy"
         :title="busy ? '更换中' : '换一道'"
-        @click="$emit('reroll')"
+        @click.stop="emit('reroll')"
       >
         {{ busy ? '…' : '换' }}
       </button>
@@ -47,7 +48,7 @@ defineEmits<{
         class="btn btn-soft btn-tiny btn-icon"
         :disabled="busy"
         title="点评"
-        @click="$emit('feedback')"
+        @click.stop="emit('feedback')"
       >
         评
       </button>

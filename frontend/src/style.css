@@ -496,6 +496,145 @@ a {
 
 .day-head--compact {
   margin-bottom: 6px;
+  gap: 8px;
+}
+
+.day-head-btn {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  text-align: left;
+  flex: 1;
+  min-width: 0;
+}
+
+.day-shop-btn {
+  flex-shrink: 0;
+  padding: 4px 10px;
+  font-size: 0.72rem;
+}
+
+.meal-main--clickable {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  min-width: 0;
+  flex: 1;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+}
+
+.meal-main--clickable:active {
+  opacity: 0.75;
+}
+
+.modal--detail {
+  max-height: min(85vh, 640px);
+  overflow-y: auto;
+}
+
+.modal-detail-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.modal-detail-meta {
+  margin: 0 0 4px;
+  color: var(--ink-soft);
+  font-size: 0.8rem;
+}
+
+.modal-detail-head h3 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 1.25rem;
+  line-height: 1.3;
+}
+
+.modal-detail-desc {
+  margin: 10px 0 0;
+  color: var(--ink-soft);
+  font-size: 0.88rem;
+  line-height: 1.5;
+}
+
+.modal-detail-meta-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  margin-top: 10px;
+  color: var(--sage-deep);
+  font-size: 0.78rem;
+}
+
+.shopping-section {
+  margin-top: 16px;
+  padding-top: 14px;
+  border-top: 1px solid var(--line);
+}
+
+.shopping-section h4 {
+  margin: 0 0 10px;
+  font-size: 0.9rem;
+  color: var(--ink);
+}
+
+.ingredient-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 8px;
+}
+
+.ingredient-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: var(--cream);
+  border: 1px solid rgba(20, 35, 25, 0.06);
+}
+
+.ingredient-row--shopping {
+  flex-direction: column;
+  align-items: stretch;
+}
+
+.ingredient-main {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+}
+
+.ingredient-name {
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+.ingredient-amount {
+  color: var(--sage-deep);
+  font-size: 0.86rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.ingredient-from {
+  margin: 4px 0 0;
+  color: var(--ink-soft);
+  font-size: 0.74rem;
+  line-height: 1.4;
 }
 
 .day-title {

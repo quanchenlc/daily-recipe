@@ -11,6 +11,8 @@ defineProps<{
 const emit = defineEmits<{
   reroll: [item: PlanItem]
   feedback: [item: PlanItem]
+  detail: [item: PlanItem]
+  dayShop: [day: DayMeals]
 }>()
 
 function isBusy(item: PlanItem, busyKey: string | null) {
@@ -31,8 +33,18 @@ function slotItems(day: DayMeals, slot: 'lunch' | 'dinner') {
       :style="{ animationDelay: `${0.03 * index}s` }"
     >
       <header class="day-head day-head--compact">
-        <h2 class="day-title">{{ day.weekday }}</h2>
-        <span class="day-date">{{ formatMonthDay(day.date) }}</span>
+        <button type="button" class="day-head-btn" @click="emit('dayShop', day)">
+          <h2 class="day-title">{{ day.weekday }}</h2>
+          <span class="day-date">{{ formatMonthDay(day.date) }}</span>
+        </button>
+        <button
+          type="button"
+          class="btn btn-soft btn-tiny day-shop-btn"
+          title="查看今日采购清单"
+          @click="emit('dayShop', day)"
+        >
+          买菜
+        </button>
       </header>
 
       <div class="day-meals-grid">
@@ -46,6 +58,7 @@ function slotItems(day: DayMeals, slot: 'lunch' | 'dinner') {
               :busy="isBusy(item, busyKey)"
               @reroll="emit('reroll', item)"
               @feedback="emit('feedback', item)"
+              @detail="emit('detail', item)"
             />
             <p v-if="!slotItems(day, slot).length" class="meal-empty">—</p>
           </div>
