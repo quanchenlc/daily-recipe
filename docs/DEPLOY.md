@@ -168,14 +168,40 @@ GitHub 没有长期运行 Node 服务、也没有 MySQL。
 
 ---
 
+## GitHub：仓库改成公开
+
+1. 打开仓库页：https://github.com/quanchenlc/daily-recipe  
+2. 点 **Settings**（设置）  
+3. 左侧最下面 **Danger Zone**（危险区域）  
+4. **Change repository visibility** → **Change visibility**  
+5. 选 **Public**（公开）并确认  
+
+公开后才能用免费 GitHub Pages 给手机随时打开前端。
+
+## Railway 授权后你需要给我什么
+
+**不要把 Railway 密码发给我。** 你在 Railway 控制台部署好后，给我这三样文字即可：
+
+1. **后端公网地址**（Generate Domain 后的 URL）  
+   例：`https://daily-recipe-api-xxxx.up.railway.app`
+2. **是否已添加 MySQL 插件**，以及变量是否已映射到：  
+   `DB_HOST` / `DB_PORT` / `DB_USER` / `DB_PASSWORD` / `DB_NAME`
+3. **LLM 环境变量是否已在 Railway 配好**（在 Railway Variables 里配，不要再贴到聊天里）：  
+   - `LLM_BASE_URL=https://api.deepseek.com`  
+   - `LLM_API_KEY=你的Key`  
+   - `LLM_MODEL=deepseek-v4-flash`
+
+有了公网 API 地址后，我帮你配 GitHub Pages 的 `VITE_API_BASE_URL`。
+
 ## 最短操作清单（你照着勾）
 
-1. [ ] 后端部署到 Render/Railway，拿到 `https://xxx`  
-2. [ ] GitHub 仓库开启 Pages（Source = GitHub Actions）  
-3. [ ] 添加 Secret：`VITE_API_BASE_URL=https://xxx`  
-4. [ ] 合并 PR 到 `main`，等 Actions 绿勾  
-5. [ ] 手机打开 `https://quanchenlc.github.io/daily-recipe/`  
-6. [ ] 测：生成菜单 → 换菜 → 点评  
+1. [ ] GitHub 仓库改成 **Public**  
+2. [ ] 后端部署到 Railway，拿到 `https://xxx`  
+3. [ ] GitHub 仓库开启 Pages（Source = GitHub Actions）  
+4. [ ] 添加 Secret：`VITE_API_BASE_URL=https://xxx`  
+5. [ ] 合并 PR 到 `main`，等 Actions 绿勾  
+6. [ ] 手机打开 `https://quanchenlc.github.io/daily-recipe/`  
+7. [ ] 测：生成菜单 → 换菜 → 点评  
 
 ---
 

@@ -214,17 +214,24 @@ export class LlmService {
         : `生成 ${context.days} 天，每天 lunch + dinner，共 ${context.days * 2} 道菜。`,
     };
 
+    const payload: Record<string, unknown> = {
+      model,
+      temperature: 0.8,
+      messages: [
+        { role: 'system', content: system },
+        { role: 'user', content: JSON.stringify(userPayload) },
+      ],
+      response_format: { type: 'json_object' },
+    };
+
+    // DeepSeek V4 defaults thinking on; disable for cheaper structured JSON.
+    if (baseUrl.includes('deepseek') || model.includes('deepseek')) {
+      payload.thinking = { type: 'disabled' };
+    }
+
     const response = await axios.post(
       `${baseUrl}/chat/completions`,
-      {
-        model,
-        temperature: 0.8,
-        messages: [
-          { role: 'system', content: system },
-          { role: 'user', content: JSON.stringify(userPayload) },
-        ],
-        response_format: { type: 'json_object' },
-      },
+      payload,
       {
         timeout,
         headers: {
