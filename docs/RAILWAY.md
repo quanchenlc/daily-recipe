@@ -50,7 +50,9 @@ npm run build
 
 **Settings → Source → Branch** = `cursor/recipe-recommendation-plan-f7fd`
 
-### 2. 环境变量（Variables）
+### 2. 环境变量（Variables）——健康检查失败多半是这里没配
+
+后端服务 → **Variables**，至少要有 MySQL（把 `MySQL` 换成你数据库卡片名）：
 
 ```env
 DB_HOST=${{MySQL.MYSQLHOST}}
@@ -58,16 +60,30 @@ DB_PORT=${{MySQL.MYSQLPORT}}
 DB_USER=${{MySQL.MYSQLUSER}}
 DB_PASSWORD=${{MySQL.MYSQLPASSWORD}}
 DB_NAME=${{MySQL.MYSQLDATABASE}}
+```
 
-COOLDOWN_DAYS=30
-PLAN_DAYS=7
+也支持直接写 Railway 自动给的：`MYSQLHOST`、`MYSQLPORT` 等（代码已兼容）。
 
+再加 LLM：
+
+```env
 LLM_BASE_URL=https://api.deepseek.com
 LLM_API_KEY=你的Key
 LLM_MODEL=deepseek-v4-flash
+COOLDOWN_DAYS=30
+PLAN_DAYS=7
 ```
 
-### 3. 公网域名
+> 没配数据库时，服务启动会失败，健康检查 `/api/health` 会一直 **service unavailable**。
+
+### 3. 看 Deploy 日志（不是 Build 日志）
+
+**Deployments → View logs → Deploy** 里若看到：
+
+- `ECONNREFUSED` / `Access denied` → MySQL 变量没配对
+- `Failed to start daily-recipe-api` → 把完整错误发我
+
+### 4. 公网域名
 
 **Networking → Generate Domain**
 
