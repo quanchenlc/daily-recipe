@@ -300,6 +300,10 @@ a {
   align-items: end;
 }
 
+.meal-config-row--4 {
+  grid-template-columns: 2.2rem repeat(3, 1fr);
+}
+
 .meal-config-row + .meal-config-row {
   margin-top: 8px;
 }
@@ -414,6 +418,16 @@ a {
 .meal-item--soup {
   background: linear-gradient(180deg, #f2f8f4, #fff);
   border-color: rgba(63, 122, 87, 0.12);
+}
+
+.meal-kind--vegetable {
+  background: rgba(124, 176, 137, 0.2);
+  color: var(--sage-deep);
+}
+
+.meal-kind--meat {
+  background: rgba(232, 137, 76, 0.16);
+  color: var(--apricot-deep);
 }
 
 .meal-item--soup .meal-kind {

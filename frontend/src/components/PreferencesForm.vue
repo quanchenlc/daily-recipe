@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { reactive, ref, watch } from 'vue'
 import type { MealConfig, UserPreference } from '../types'
+import { normalizeSlotConfig } from '../types'
 import CounterStepper from './CounterStepper.vue'
 
 const props = defineProps<{
@@ -25,9 +26,11 @@ const form = reactive({
   elderlyCount: 0,
   childrenCount: 0,
   flavorNotes: '',
-  lunchDishes: 2,
+  lunchMeat: 1,
+  lunchVeg: 1,
   lunchSoups: 1,
-  dinnerDishes: 3,
+  dinnerMeat: 2,
+  dinnerVeg: 1,
   dinnerSoups: 1,
 })
 
@@ -39,10 +42,14 @@ watch(
     form.elderlyCount = pref.elderlyCount ?? 0
     form.childrenCount = pref.childrenCount ?? 0
     form.flavorNotes = pref.flavorNotes ?? ''
-    form.lunchDishes = pref.mealConfig?.lunch.dishes ?? 2
-    form.lunchSoups = pref.mealConfig?.lunch.soups ?? 1
-    form.dinnerDishes = pref.mealConfig?.dinner.dishes ?? 3
-    form.dinnerSoups = pref.mealConfig?.dinner.soups ?? 1
+    const lunch = normalizeSlotConfig(pref.mealConfig?.lunch ?? {})
+    const dinner = normalizeSlotConfig(pref.mealConfig?.dinner ?? {})
+    form.lunchMeat = lunch.meatDishes
+    form.lunchVeg = lunch.vegetableDishes
+    form.lunchSoups = lunch.soups
+    form.dinnerMeat = dinner.meatDishes
+    form.dinnerVeg = dinner.vegetableDishes
+    form.dinnerSoups = dinner.soups
   },
   { immediate: true },
 )
@@ -56,8 +63,16 @@ function submit() {
     childrenCount: form.childrenCount,
     flavorNotes: form.flavorNotes.trim(),
     mealConfig: {
-      lunch: { dishes: form.lunchDishes, soups: form.lunchSoups },
-      dinner: { dishes: form.dinnerDishes, soups: form.dinnerSoups },
+      lunch: {
+        meatDishes: form.lunchMeat,
+        vegetableDishes: form.lunchVeg,
+        soups: form.lunchSoups,
+      },
+      dinner: {
+        meatDishes: form.dinnerMeat,
+        vegetableDishes: form.dinnerVeg,
+        soups: form.dinnerSoups,
+      },
     },
   })
 }
@@ -71,7 +86,7 @@ function submit() {
     </button>
 
     <p v-if="!open" class="pref-text pref-text--compact">
-      {{ preference?.summaryText || '设置人数、口味和每餐几菜几汤。' }}
+      {{ preference?.summaryText || '设置人数、荤素搭配和每餐结构。' }}
     </p>
 
     <form v-else class="pref-form" @submit.prevent="submit">
@@ -94,20 +109,27 @@ function submit() {
       </label>
 
       <fieldset class="pref-fieldset">
-        <legend>每餐结构</legend>
-        <div class="meal-config-row">
+        <legend>每餐结构（荤 + 素 + 汤）</legend>
+        <p class="pref-hint">例如晚餐 2 荤 + 1 素 + 1 汤，营养更均衡。</p>
+        <div class="meal-config-row meal-config-row--4">
           <span class="meal-config-title">午餐</span>
-          <CounterStepper v-model="form.lunchDishes" label="菜" :min="0" :max="6" />
+          <CounterStepper v-model="form.lunchMeat" label="荤" :min="0" :max="6" />
+          <CounterStepper v-model="form.lunchVeg" label="素" :min="0" :max="6" />
           <CounterStepper v-model="form.lunchSoups" label="汤" :min="0" :max="4" />
         </div>
-        <div class="meal-config-row">
+        <div class="meal-config-row meal-config-row--4">
           <span class="meal-config-title">晚餐</span>
-          <CounterStepper v-model="form.dinnerDishes" label="菜" :min="0" :max="6" />
+          <CounterStepper v-model="form.dinnerMeat" label="荤" :min="0" :max="6" />
+          <CounterStepper v-model="form.dinnerVeg" label="素" :min="0" :max="6" />
           <CounterStepper v-model="form.dinnerSoups" label="汤" :min="0" :max="4" />
         </div>
       </fieldset>
 
-      <button type="submit" class="btn btn-primary btn-block btn-compact" :disabled="saving || familyTotal() < 1">
+      <button
+        type="submit"
+        class="btn btn-primary btn-block btn-compact"
+        :disabled="saving || familyTotal() < 1 || (form.lunchMeat + form.lunchVeg + form.lunchSoups + form.dinnerMeat + form.dinnerVeg + form.dinnerSoups < 1)"
+      >
         {{ saving ? '保存中…' : '保存设置' }}
       </button>
     </form>

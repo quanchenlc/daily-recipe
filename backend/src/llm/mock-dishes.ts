@@ -1,4 +1,4 @@
-import { DishType } from './llm.types';
+import { DishCategory } from '../preferences/preference.types';
 
 export interface MockDish {
   name: string;
@@ -121,50 +121,97 @@ const EXTRA_SOUP_NAMES = [
   '土茯苓排骨汤', '菜干猪肺汤', '鸡骨草排骨汤', '苹果雪梨汤',
 ];
 
+export function isVegetableDish(dish: MockDish): boolean {
+  const tags = dish.tags ?? [];
+  if (tags.includes('荤菜') || tags.includes('海鲜') || tags.includes('硬菜')) {
+    return false;
+  }
+  return tags.some((t) =>
+    ['素菜', '蔬菜', '清淡', '凉菜'].includes(t),
+  );
+}
+
 export function inventRecipeName(
-  dishType: DishType,
+  category: DishCategory,
   used: Set<string>,
   blocked: Set<string>,
 ): MockDish {
-  const pool = dishType === 'soup' ? EXTRA_SOUP_NAMES : EXTRA_DISH_NAMES;
+  const pool =
+    category === 'soup'
+      ? EXTRA_SOUP_NAMES
+      : category === 'vegetable'
+        ? [
+            '蒜蓉西兰花', '清炒时蔬', '蚝油生菜', '香菇青菜', '凉拌黄瓜',
+            '手撕包菜', '清炒荷兰豆', '蒜蓉秋葵', '芹菜炒香干', '红烧茄子',
+          ]
+        : EXTRA_DISH_NAMES;
   for (const name of pool) {
     if (!used.has(name) && !blocked.has(name)) {
       return {
         name,
-        tags: dishType === 'soup' ? ['汤品', '家常'] : ['家常', '下饭'],
-        ingredients: dishType === 'soup' ? ['肉类', '蔬菜'] : ['时令食材'],
-        cookMinutes: dishType === 'soup' ? 45 : 25,
+        tags:
+          category === 'soup'
+            ? ['汤品', '家常']
+            : category === 'vegetable'
+              ? ['素菜', '清淡']
+              : ['荤菜', '下饭'],
+        ingredients:
+          category === 'soup' ? ['肉类', '蔬菜'] : ['时令食材'],
+        cookMinutes: category === 'soup' ? 45 : 25,
         difficulty: '简单',
       };
     }
   }
 
-  const methods = dishType === 'soup' ? ['炖', '煲', '滚'] : ['炒', '烧', '蒸', '煎', '焖'];
+  const methods =
+    category === 'soup'
+      ? ['炖', '煲', '滚']
+      : category === 'vegetable'
+        ? ['清炒', '蒜蓉', '凉拌', '白灼']
+        : ['炒', '烧', '蒸', '煎', '焖'];
   const mains =
-    dishType === 'soup'
+    category === 'soup'
       ? ['排骨', '鸡', '鱼', '豆腐', '菌菇', '萝卜']
-      : ['鸡丁', '肉丝', '豆腐', '茄子', '时蔬', '虾仁', '牛肉'];
+      : category === 'vegetable'
+        ? ['时蔬', '西兰花', '生菜', '豆角', '菠菜']
+        : ['鸡丁', '肉丝', '牛肉', '虾仁', '排骨', '鱼'];
   let attempt = 0;
   while (attempt < 200) {
     const method = methods[attempt % methods.length];
     const main = mains[attempt % mains.length];
-    const name = dishType === 'soup' ? `${main}${method}汤` : `${method}${main}`;
+    const name =
+      category === 'soup' ? `${main}${method}汤` : `${method}${main}`;
     attempt += 1;
     if (!used.has(name) && !blocked.has(name)) {
       return {
         name,
-        tags: dishType === 'soup' ? ['汤品', '家常'] : ['家常', '下饭'],
+        tags:
+          category === 'soup'
+            ? ['汤品', '家常']
+            : category === 'vegetable'
+              ? ['素菜', '清淡']
+              : ['荤菜', '下饭'],
         ingredients: [main],
-        cookMinutes: dishType === 'soup' ? 40 : 22,
+        cookMinutes: category === 'soup' ? 40 : 22,
         difficulty: '简单',
       };
     }
   }
 
-  const fallback = dishType === 'soup' ? `鲜汤${Date.now() % 10000}` : `小炒${Date.now() % 10000}`;
+  const fallback =
+    category === 'soup'
+      ? `鲜汤${Date.now() % 10000}`
+      : category === 'vegetable'
+        ? `素炒${Date.now() % 10000}`
+        : `小炒${Date.now() % 10000}`;
   return {
     name: fallback,
-    tags: dishType === 'soup' ? ['汤品'] : ['家常'],
+    tags:
+      category === 'soup'
+        ? ['汤品']
+        : category === 'vegetable'
+          ? ['素菜']
+          : ['荤菜'],
     ingredients: ['时令食材'],
     cookMinutes: 25,
     difficulty: '简单',

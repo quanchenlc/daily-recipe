@@ -9,6 +9,8 @@ import {
   DEFAULT_MEAL_CONFIG,
   MealConfig,
   itemsPerDay,
+  normalizeMealConfig,
+  slotDishCount,
 } from './preference.types';
 
 const DEFAULT_KEY = 'default';
@@ -56,9 +58,14 @@ export class PreferencesService {
     if (dto.childrenCount !== undefined) pref.childrenCount = dto.childrenCount;
     if (dto.flavorNotes !== undefined) pref.flavorNotes = dto.flavorNotes.trim() || null;
     if (dto.mealConfig !== undefined) {
-      pref.mealConfig = this.normalizeMealConfig(dto.mealConfig);
+      pref.mealConfig = normalizeMealConfig(dto.mealConfig);
       if (itemsPerDay(pref.mealConfig) < 1) {
         throw new BadRequestException('每餐至少需要 1 道菜或 1 道汤');
+      }
+      const lunch = pref.mealConfig.lunch;
+      const dinner = pref.mealConfig.dinner;
+      if (slotDishCount(lunch) < 1 && slotDishCount(dinner) < 1) {
+        throw new BadRequestException('午餐或晚餐至少有一餐包含荤菜/素菜');
       }
     }
 
@@ -67,7 +74,7 @@ export class PreferencesService {
   }
 
   getMealConfig(pref: UserPreference): MealConfig {
-    return this.normalizeMealConfig(pref.mealConfig);
+    return normalizeMealConfig(pref.mealConfig);
   }
 
   async applyFeedback(recipe: Recipe, feedback: Feedback) {
@@ -98,25 +105,9 @@ export class PreferencesService {
   }
 
   private normalize(pref: UserPreference) {
-    pref.mealConfig = this.normalizeMealConfig(pref.mealConfig);
+    pref.mealConfig = normalizeMealConfig(pref.mealConfig);
     if (!pref.adultsCount && pref.adultsCount !== 0) pref.adultsCount = 2;
     return pref;
-  }
-
-  private normalizeMealConfig(config: MealConfig | null | undefined): MealConfig {
-    if (!config?.lunch || !config?.dinner) {
-      return { ...DEFAULT_MEAL_CONFIG };
-    }
-    return {
-      lunch: {
-        dishes: Math.min(6, Math.max(0, config.lunch.dishes ?? 0)),
-        soups: Math.min(4, Math.max(0, config.lunch.soups ?? 0)),
-      },
-      dinner: {
-        dishes: Math.min(6, Math.max(0, config.dinner.dishes ?? 0)),
-        soups: Math.min(4, Math.max(0, config.dinner.soups ?? 0)),
-      },
-    };
   }
 
   private extractSignals(recipe: Recipe, feedback: Feedback) {
@@ -152,9 +143,9 @@ export class PreferencesService {
       `家庭 ${total} 人（成人 ${pref.adultsCount}，老人 ${pref.elderlyCount}，儿童 ${pref.childrenCount}）`,
     );
 
-    const mealConfig = this.normalizeMealConfig(pref.mealConfig);
+    const mealConfig = normalizeMealConfig(pref.mealConfig);
     parts.push(
-      `午餐 ${mealConfig.lunch.dishes} 菜 ${mealConfig.lunch.soups} 汤，晚餐 ${mealConfig.dinner.dishes} 菜 ${mealConfig.dinner.soups} 汤`,
+      `午餐 ${mealConfig.lunch.meatDishes}荤${mealConfig.lunch.vegetableDishes}素${mealConfig.lunch.soups}汤，晚餐 ${mealConfig.dinner.meatDishes}荤${mealConfig.dinner.vegetableDishes}素${mealConfig.dinner.soups}汤`,
     );
 
     if (pref.flavorNotes?.trim()) {

@@ -51,12 +51,90 @@ export function enrichIngredient(raw: string, familySize: number): string {
   return `${name} ${n * 50}g`
 }
 
-export function getDishIngredients(item: PlanItem, familySize: number): ParsedIngredient[] {
-  const list = item.recipe.ingredients?.length
-    ? item.recipe.ingredients
-    : ['主要食材（详见菜谱）']
+export function categoryLabel(
+  category: PlanItem['dishCategory'] | undefined,
+  dishType: PlanItem['dishType'],
+): string {
+  if (dishType === 'soup' || category === 'soup') return '汤'
+  if (category === 'vegetable') return '素'
+  if (category === 'meat') return '荤'
+  return '菜'
+}
 
-  return list.map((raw) => parseIngredient(enrichIngredient(raw, familySize)))
+/** Expand sparse ingredient lists for display */
+function ensureDetailedIngredients(
+  name: string,
+  ingredients: string[],
+  familySize: number,
+): string[] {
+  if (ingredients.length >= 5) return ingredients
+  const n = Math.max(1, familySize)
+  const extras: string[] = []
+
+  if (/水煮|麻辣/.test(name)) {
+    extras.push(
+      `牛肉 ${n * 120}g`,
+      `豆芽 ${n * 80}g`,
+      `干辣椒 ${n * 5}g`,
+      `花椒 ${n * 2}g`,
+      '豆瓣酱 2勺',
+      `姜 ${Math.max(3, n)}片`,
+      `蒜 ${Math.max(3, n)}瓣`,
+      '料酒 1勺',
+      '淀粉 1勺',
+      '食用油 适量',
+      '盐 适量',
+    )
+  } else if (/汤/.test(name)) {
+    extras.push(
+      `排骨 ${n * 150}g`,
+      `玉米 ${n}根`,
+      `姜 ${Math.max(3, n)}片`,
+      '料酒 1勺',
+      '盐 适量',
+    )
+  } else if (/[肉排骨鸡鸭鱼虾]/.test(name)) {
+    extras.push(
+      `主料 ${n * 120}g`,
+      `配菜蔬菜 ${n * 100}g`,
+      `姜 ${Math.max(2, n)}片`,
+      `蒜 ${Math.max(2, n)}瓣`,
+      '生抽 1勺',
+      '料酒 1勺',
+      '盐 适量',
+      '食用油 适量',
+    )
+  } else {
+    extras.push(
+      `蔬菜 ${n * 150}g`,
+      `蒜 ${Math.max(2, n)}瓣`,
+      '盐 适量',
+      '蚝油 1勺',
+      '食用油 适量',
+    )
+  }
+
+  const merged = [...ingredients]
+  for (const item of extras) {
+    const key = item.split(' ')[0]
+    if (!merged.some((m) => m.startsWith(key))) merged.push(item)
+    if (merged.length >= 8) break
+  }
+  return merged
+}
+
+export function getDishIngredients(item: PlanItem, familySize: number): ParsedIngredient[] {
+  const raw = item.recipe.ingredients?.length
+    ? item.recipe.ingredients
+    : ['主要食材']
+
+  const detailed = ensureDetailedIngredients(
+    item.recipe.name,
+    raw,
+    familySize,
+  )
+
+  return detailed.map((line) => parseIngredient(enrichIngredient(line, familySize)))
 }
 
 function parseAmountValue(amount: string): { value: number; unit: string } | null {

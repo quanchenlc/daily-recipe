@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { PlanItem } from '../types'
+import { categoryLabel } from '../utils/ingredients'
 
 defineProps<{
   item: PlanItem
@@ -23,7 +24,9 @@ const emit = defineEmits<{
     }"
   >
     <button type="button" class="meal-main meal-main--clickable" @click="emit('detail')">
-      <span class="meal-kind">{{ item.dishType === 'soup' ? '汤' : '菜' }}</span>
+      <span class="meal-kind" :class="`meal-kind--${item.dishCategory || 'meat'}`">
+        {{ categoryLabel(item.dishCategory, item.dishType) }}
+      </span>
       <div class="meal-body">
         <h3 class="meal-name">{{ item.recipe.name }}</h3>
         <p v-if="item.recipe.tags?.length" class="meal-tags-inline">

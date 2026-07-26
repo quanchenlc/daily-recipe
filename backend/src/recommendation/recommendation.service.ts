@@ -9,11 +9,13 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Between, Repository } from 'typeorm';
 import { LlmService } from '../llm/llm.service';
 import {
+  DishCategory,
   DishType,
   LlmMenuItem,
   MealSlot,
   RecommendContext,
 } from '../llm/llm.types';
+import { ensureDetailedIngredients } from '../llm/ingredient-detail';
 import { PlanItem } from '../plans/entities/plan-item.entity';
 import { RecommendationHistory } from '../plans/entities/recommendation-history.entity';
 import { WeekPlan } from '../plans/entities/week-plan.entity';
@@ -62,6 +64,7 @@ export class RecommendationService {
           serveDate: item.date,
           mealSlot: item.mealSlot,
           dishType: item.dishType,
+          dishCategory: item.dishCategory,
           slotIndex: item.slotIndex,
           reason: item.reason ?? null,
         }),
@@ -114,6 +117,7 @@ export class RecommendationService {
       date: item.serveDate,
       mealSlot: item.mealSlot,
       dishType: item.dishType ?? 'dish',
+      dishCategory: item.dishCategory ?? 'meat',
       slotIndex: item.slotIndex ?? 0,
       avoidNames: weekNames,
     };
@@ -258,10 +262,16 @@ export class RecommendationService {
       date: string;
       mealSlot: MealSlot;
       dishType: DishType;
+      dishCategory: DishCategory;
       slotIndex: number;
       recipeId: string;
       reason?: string;
     }> = [];
+
+    const people =
+      context.familyComposition.adults +
+      context.familyComposition.elderly +
+      context.familyComposition.children;
 
     for (let i = 0; i < expectedCount; i++) {
       const slot = expectedSlots[i];
@@ -289,6 +299,7 @@ export class RecommendationService {
             date: slot.date,
             mealSlot: slot.mealSlot,
             dishType: slot.dishType,
+            dishCategory: slot.dishCategory,
             slotIndex: slot.slotIndex,
             avoidNames: [...used, ...blocked],
           },
@@ -314,7 +325,7 @@ export class RecommendationService {
       const recipe = await this.recipesService.findOrCreateFromLlm({
         name,
         description,
-        ingredients,
+        ingredients: ensureDetailedIngredients(name, ingredients, Math.max(1, people)),
         tags,
         cookMinutes,
         difficulty,
@@ -326,6 +337,7 @@ export class RecommendationService {
         date: slot.date,
         mealSlot: slot.mealSlot,
         dishType: slot.dishType,
+        dishCategory: slot.dishCategory,
         slotIndex: slot.slotIndex,
         recipeId: recipe.id,
         reason,
@@ -342,6 +354,7 @@ export class RecommendationService {
         date: slots[index].date,
         mealSlot: slots[index].mealSlot,
         dishType: slots[index].dishType,
+        dishCategory: slots[index].dishCategory,
         slotIndex: slots[index].slotIndex,
       }));
     }

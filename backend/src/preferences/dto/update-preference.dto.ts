@@ -11,10 +11,21 @@ import {
 import { MealSlotConfig } from '../preference.types';
 
 class MealSlotConfigDto implements MealSlotConfig {
+  @IsOptional()
   @IsInt()
   @Min(0)
   @Max(6)
-  dishes: number;
+  dishes?: number;
+
+  @IsInt()
+  @Min(0)
+  @Max(6)
+  meatDishes: number;
+
+  @IsInt()
+  @Min(0)
+  @Max(6)
+  vegetableDishes: number;
 
   @IsInt()
   @Min(0)
