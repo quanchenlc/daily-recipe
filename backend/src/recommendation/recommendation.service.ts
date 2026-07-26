@@ -220,12 +220,37 @@ export class RecommendationService {
 
     if (working.length !== expectedCount) {
       this.logger.warn(
-        `LLM item count ${working.length} != expected ${expectedCount}, regenerating via mock fallback`,
+        `LLM item count ${working.length} != expected ${expectedCount}, filling gaps`,
       );
-      working = this.alignItemsToSlots(
-        this.llm.mockMenu(context).items,
-        expectedSlots,
-      );
+      working = this.llm
+        .mockMenu(context)
+        .items.slice(0, expectedCount)
+        .map((item, index) => ({
+          ...item,
+          date: expectedSlots[index].date,
+          mealSlot: expectedSlots[index].mealSlot,
+          dishType: expectedSlots[index].dishType,
+          slotIndex: expectedSlots[index].slotIndex,
+          // Keep LLM name when present
+          recipeName:
+            working[index]?.recipeName?.trim() || item.recipeName,
+        }));
+    } else {
+      // Fill any empty names from mock while keeping LLM names
+      const mockItems = this.llm.mockMenu(context).items;
+      working = working.map((item, index) => {
+        const name = item?.recipeName?.trim();
+        if (name && !/^时令家常菜\d*$/.test(name) && !/^家常汤\d*$/.test(name)) {
+          return item;
+        }
+        return {
+          ...mockItems[index],
+          date: expectedSlots[index].date,
+          mealSlot: expectedSlots[index].mealSlot,
+          dishType: expectedSlots[index].dishType,
+          slotIndex: expectedSlots[index].slotIndex,
+        };
+      });
     }
 
     const used = new Set<string>();
@@ -270,7 +295,7 @@ export class RecommendationService {
           blockedRecipeNames: [...blocked],
         });
         const next = replacement.items[0];
-        name = next?.recipeName?.trim() || `家常小炒${guard}`;
+        name = next?.recipeName?.trim() || `补充小炒${guard}`;
         description = next?.description;
         ingredients = next?.ingredients;
         tags = next?.tags;

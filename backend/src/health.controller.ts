@@ -10,7 +10,7 @@ export class HealthController {
     return {
       ok: true,
       service: 'daily-recipe-api',
-      version: '2.1.0',
+      version: '2.2.0',
       features: {
         preferencesPatch: true,
         multiDishMeals: true,
