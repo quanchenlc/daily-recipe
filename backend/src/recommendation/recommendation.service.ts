@@ -80,6 +80,63 @@ export class RecommendationService {
     return this.getPlan(saved.id);
   }
 
+  async regenerateDay(serveDate: string) {
+    const weekStart = this.mondayOf(serveDate);
+    const planDays = Number(this.config.get('PLAN_DAYS', '7'));
+    const context = await this.buildContext(weekStart, planDays);
+
+    let plan = await this.plansRepo.findOne({
+      where: { weekStart },
+      relations: { items: { recipe: true } },
+    });
+
+    const otherDayNames = (plan?.items ?? [])
+      .filter((item) => item.serveDate !== serveDate)
+      .map((item) => item.recipe.name);
+
+    context.weekStart = serveDate;
+    context.days = 1;
+    context.blockedRecipeNames = [
+      ...new Set([...context.blockedRecipeNames, ...otherDayNames]),
+    ];
+
+    const menu = await this.llm.generateMenu(context);
+    const validated = await this.validateAndResolveItems(menu.items, context);
+
+    if (plan) {
+      const dayItems = plan.items.filter((item) => item.serveDate === serveDate);
+      if (dayItems.length) {
+        await this.itemsRepo.remove(dayItems);
+      }
+    } else {
+      plan = await this.plansRepo.save(
+        this.plansRepo.create({
+          weekStart,
+          status: 'draft',
+        }),
+      );
+    }
+
+    await this.itemsRepo.save(
+      validated.map((item) =>
+        this.itemsRepo.create({
+          planId: plan!.id,
+          recipeId: item.recipeId,
+          serveDate: item.date,
+          mealSlot: item.mealSlot,
+          dishType: item.dishType,
+          dishCategory: item.dishCategory,
+          slotIndex: item.slotIndex,
+          reason: item.reason ?? null,
+        }),
+      ),
+    );
+
+    await this.confirmationsRepo.delete({ serveDate });
+    await this.appendHistory(validated);
+    return this.getPlan(plan!.id);
+  }
+
   async getCurrentPlan() {
     return this.getPlanForWeek(this.currentMonday());
   }
