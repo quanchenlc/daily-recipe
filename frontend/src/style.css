@@ -936,12 +936,18 @@ a {
 .modal-mask {
   position: fixed;
   inset: 0;
-  z-index: 40;
+  z-index: 50;
   display: grid;
   align-items: end;
   background: rgba(20, 35, 25, 0.42);
   padding: 16px;
+  padding-bottom: calc(16px + env(safe-area-inset-bottom, 0px));
   animation: fade-in 0.2s ease both;
+}
+
+.modal-mask--history {
+  align-items: center;
+  padding: 16px 12px 88px;
 }
 
 .modal {
@@ -1167,15 +1173,130 @@ a {
   font-size: 0.8rem;
 }
 
+.meal-main--readonly {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  min-width: 0;
+  flex: 1;
+  color: var(--ink);
+}
+
 .modal--history {
-  max-height: min(88vh, 760px);
-  overflow: auto;
+  display: flex;
+  flex-direction: column;
+  width: min(560px, 100%);
+  max-height: min(78vh, 680px);
+  overflow: hidden;
+}
+
+.history-detail-body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  margin-top: 12px;
+  padding-right: 2px;
+}
+
+.history-detail-menu {
+  display: grid;
+  gap: 16px;
+}
+
+.history-meal-section {
+  padding: 12px;
+  border-radius: 16px;
+  background: var(--cream);
+  border: 1px solid var(--line);
+}
+
+.history-meal-title {
+  margin: 0 0 10px;
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--sage-deep);
+  letter-spacing: 0.08em;
+}
+
+.history-dish-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 8px;
+}
+
+.history-dish-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: #fff;
+  border: 1px solid rgba(20, 35, 25, 0.06);
+}
+
+.history-dish-badge {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  font-size: 0.76rem;
+  font-weight: 700;
+}
+
+.history-dish-badge--meat {
+  background: rgba(232, 137, 76, 0.16);
+  color: var(--apricot-deep);
+}
+
+.history-dish-badge--vegetable {
+  background: rgba(124, 176, 137, 0.2);
+  color: var(--sage-deep);
+}
+
+.history-dish-badge--soup {
+  background: rgba(207, 111, 51, 0.12);
+  color: #8a4a12;
+}
+
+.history-dish-body {
+  min-width: 0;
+  flex: 1;
+}
+
+.history-dish-name {
+  margin: 0;
+  color: var(--ink);
+  font-size: 0.96rem;
+  font-weight: 700;
+  line-height: 1.35;
+  word-break: break-word;
+}
+
+.history-dish-meta {
+  margin: 4px 0 0;
+  color: var(--ink-soft);
+  font-size: 0.78rem;
+  line-height: 1.35;
+}
+
+.history-dish-empty {
+  margin: 0;
+  color: var(--ink-soft);
+  font-size: 0.86rem;
 }
 
 .history-detail-actions {
   margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
   display: flex;
   justify-content: flex-end;
+  flex-shrink: 0;
 }
 
 .empty--compact {

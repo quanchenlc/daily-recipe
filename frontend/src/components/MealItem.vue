@@ -24,12 +24,23 @@ const emit = defineEmits<{
       'meal-item--compact': compact !== false,
     }"
   >
+    <div v-if="readonly" class="meal-main meal-main--readonly">
+      <span class="meal-kind" :class="`meal-kind--${item.dishCategory || 'meat'}`">
+        {{ categoryLabel(item.dishCategory, item.dishType) }}
+      </span>
+      <div class="meal-body">
+        <h3 class="meal-name">{{ item.recipe.name }}</h3>
+        <p v-if="item.recipe.tags?.length" class="meal-tags-inline">
+          {{ item.recipe.tags.slice(0, 2).join(' · ') }}
+          <span v-if="item.recipe.cookMinutes" class="meal-time">{{ item.recipe.cookMinutes }}分</span>
+        </p>
+      </div>
+    </div>
     <button
+      v-else
       type="button"
-      class="meal-main"
-      :class="{ 'meal-main--clickable': !readonly }"
-      :disabled="readonly"
-      @click="!readonly && emit('detail')"
+      class="meal-main meal-main--clickable"
+      @click="emit('detail')"
     >
       <span class="meal-kind" :class="`meal-kind--${item.dishCategory || 'meat'}`">
         {{ categoryLabel(item.dishCategory, item.dishType) }}
