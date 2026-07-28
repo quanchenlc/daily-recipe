@@ -58,7 +58,7 @@ a {
 .app-shell {
   width: min(720px, 100%);
   margin: 0 auto;
-  padding: 12px 12px 32px;
+  padding: 12px 12px 88px;
 }
 
 .hero {
@@ -1061,4 +1061,124 @@ a {
     opacity: 1;
     transform: translateY(0);
   }
+}
+
+.app-nav {
+  position: fixed;
+  left: 50%;
+  bottom: 12px;
+  z-index: 40;
+  display: flex;
+  gap: 8px;
+  width: min(360px, calc(100% - 24px));
+  padding: 6px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.94);
+  border: 1px solid var(--line);
+  box-shadow: 0 12px 32px rgba(20, 35, 25, 0.14);
+  transform: translateX(-50%);
+}
+
+.app-nav-btn {
+  flex: 1;
+  border: 0;
+  border-radius: 999px;
+  padding: 12px 16px;
+  background: transparent;
+  color: var(--ink-soft);
+  font-weight: 600;
+}
+
+.app-nav-btn--active {
+  background: linear-gradient(135deg, var(--sage), var(--sage-deep));
+  color: #f7fbf7;
+}
+
+.history-page {
+  animation: rise 0.5s ease both;
+}
+
+.history-head {
+  margin-bottom: 16px;
+}
+
+.history-title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 1.6rem;
+}
+
+.history-desc {
+  margin: 8px 0 0;
+  color: var(--ink-soft);
+  font-size: 0.92rem;
+  line-height: 1.5;
+}
+
+.history-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 10px;
+}
+
+.history-card {
+  width: 100%;
+  text-align: left;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  padding: 14px 16px;
+  background: rgba(255, 255, 255, 0.82);
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.history-card:active {
+  transform: scale(0.99);
+}
+
+.history-card-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
+
+.history-card-date {
+  font-weight: 700;
+  font-size: 1.05rem;
+}
+
+.history-card-meta {
+  font-size: 0.82rem;
+  color: var(--sage-deep);
+}
+
+.history-card-preview {
+  margin: 8px 0 0;
+  color: var(--ink);
+  font-size: 0.92rem;
+  line-height: 1.45;
+}
+
+.history-card-time {
+  margin: 8px 0 0;
+  color: var(--ink-soft);
+  font-size: 0.8rem;
+}
+
+.modal--history {
+  max-height: min(88vh, 760px);
+  overflow: auto;
+}
+
+.history-detail-actions {
+  margin-top: 12px;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.empty--compact {
+  margin-top: 12px;
+  padding: 20px 16px;
 }

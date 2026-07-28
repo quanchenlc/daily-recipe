@@ -6,7 +6,7 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Between, In, Repository } from 'typeorm';
+import { Between, Repository } from 'typeorm';
 import { LlmService } from '../llm/llm.service';
 import {
   DishCategory,
@@ -20,6 +20,7 @@ import { isPlaceholderDishName, inventRecipeName } from '../llm/mock-dishes';
 import { PlanItem } from '../plans/entities/plan-item.entity';
 import { RecommendationHistory } from '../plans/entities/recommendation-history.entity';
 import { DailyMenuConfirmation } from '../plans/entities/daily-menu-confirmation.entity';
+import type { ConfirmedMenuSnapshotItem } from '../plans/types/confirmed-menu-snapshot';
 import { WeekPlan } from '../plans/entities/week-plan.entity';
 import { PreferencesService } from '../preferences/preferences.service';
 import { RecipesService } from '../recipes/recipes.service';
@@ -56,7 +57,6 @@ export class RecommendationService {
       relations: { items: { recipe: true } },
     });
     if (existing) {
-      await this.clearWeekConfirmations(weekStart, days);
       await this.plansRepo.remove(existing);
     }
 
@@ -126,6 +126,40 @@ export class RecommendationService {
     };
   }
 
+  async getMenuHistory(limitInput = 30) {
+    const limit = Math.min(Math.max(1, limitInput), 100);
+    const rows = await this.confirmationsRepo.find({
+      order: { confirmedAt: 'DESC' },
+      take: limit,
+    });
+
+    return rows
+      .filter((row) => row.snapshot?.length)
+      .map((row) => ({
+        date: row.serveDate,
+        confirmedAt: row.confirmedAt.toISOString(),
+        dishCount: row.snapshot?.length ?? 0,
+        preview: (row.snapshot ?? [])
+          .slice(0, 5)
+          .map((item) => item.recipeName),
+      }));
+  }
+
+  async getMenuHistoryDetail(serveDate: string) {
+    const row = await this.confirmationsRepo.findOne({
+      where: { serveDate },
+    });
+    if (!row?.snapshot?.length) {
+      throw new NotFoundException('没有找到该日期的确认菜单');
+    }
+
+    return {
+      date: row.serveDate,
+      confirmedAt: row.confirmedAt.toISOString(),
+      items: row.snapshot,
+    };
+  }
+
   async confirmWeekMenu(weekStartInput: string) {
     const weekStart = weekStartInput || this.currentMonday();
     const plan = await this.plansRepo.findOne({
@@ -156,26 +190,45 @@ export class RecommendationService {
   }
 
   private async upsertDayConfirmations(planId: string, dates: string[]) {
+    const plan = await this.plansRepo.findOne({
+      where: { id: planId },
+      relations: { items: { recipe: true } },
+    });
+    if (!plan) return;
+
     for (const serveDate of dates) {
+      const dayItems = plan.items
+        .filter((item) => item.serveDate === serveDate)
+        .sort(this.sortItems);
+      const snapshot = this.buildSnapshot(dayItems);
+
       const existing = await this.confirmationsRepo.findOne({
         where: { serveDate },
       });
       if (existing) {
         existing.planId = planId;
+        existing.snapshot = snapshot;
         await this.confirmationsRepo.save(existing);
       } else {
         await this.confirmationsRepo.save(
-          this.confirmationsRepo.create({ serveDate, planId }),
+          this.confirmationsRepo.create({ serveDate, planId, snapshot }),
         );
       }
     }
   }
 
-  private async clearWeekConfirmations(weekStart: string, days: number) {
-    const dates = Array.from({ length: days }, (_, i) =>
-      this.addDays(weekStart, i),
-    );
-    await this.confirmationsRepo.delete({ serveDate: In(dates) });
+  private buildSnapshot(
+    items: Array<PlanItem & { recipe: { name: string; tags?: string[] | null; cookMinutes?: number | null } }>,
+  ): ConfirmedMenuSnapshotItem[] {
+    return items.map((item) => ({
+      recipeName: item.recipe.name,
+      mealSlot: item.mealSlot,
+      dishType: item.dishType ?? 'dish',
+      dishCategory: item.dishCategory ?? 'meat',
+      slotIndex: item.slotIndex ?? 0,
+      tags: item.recipe.tags ?? null,
+      cookMinutes: item.recipe.cookMinutes ?? null,
+    }));
   }
 
   async getPlan(id: string) {

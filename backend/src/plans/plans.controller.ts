@@ -25,6 +25,19 @@ export class PlansController {
     return this.recommendationService.confirmWeekMenu(weekStart);
   }
 
+  @Get('history')
+  history(@Query('limit') limit?: string) {
+    const parsed = limit ? Number(limit) : 30;
+    return this.recommendationService.getMenuHistory(
+      Number.isFinite(parsed) ? parsed : 30,
+    );
+  }
+
+  @Get('history/:date')
+  historyDetail(@Param('date', DayDatePipe) date: string) {
+    return this.recommendationService.getMenuHistoryDetail(date);
+  }
+
   @Get('day/:date')
   dayMenu(@Param('date', DayDatePipe) date: string) {
     return this.recommendationService.getDayMenu(date);

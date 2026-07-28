@@ -6,6 +6,7 @@ import MealItem from './MealItem.vue'
 defineProps<{
   days: DayMeals[]
   busyKey: string | null
+  readonly?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -33,11 +34,12 @@ function slotItems(day: DayMeals, slot: 'lunch' | 'dinner') {
       :style="{ animationDelay: `${0.03 * index}s` }"
     >
       <header class="day-head day-head--compact">
-        <button type="button" class="day-head-btn" @click="emit('dayShop', day)">
+        <button type="button" class="day-head-btn" :disabled="readonly" @click="!readonly && emit('dayShop', day)">
           <h2 class="day-title">{{ day.weekday }}</h2>
           <span class="day-date">{{ formatMonthDay(day.date) }}</span>
         </button>
         <button
+          v-if="!readonly"
           type="button"
           class="btn btn-soft btn-tiny day-shop-btn"
           title="查看今日采购清单"
@@ -56,6 +58,7 @@ function slotItems(day: DayMeals, slot: 'lunch' | 'dinner') {
               :key="item.id"
               :item="item"
               :busy="isBusy(item, busyKey)"
+              :readonly="readonly"
               @reroll="emit('reroll', item)"
               @feedback="emit('feedback', item)"
               @detail="emit('detail', item)"
