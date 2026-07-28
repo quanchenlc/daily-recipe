@@ -1,6 +1,7 @@
 import { computed, ref } from 'vue'
 import {
   confirmDayPlan,
+  confirmWeekPlan,
   generatePlan,
   getDayPlan,
   getCurrentPlan,
@@ -12,37 +13,71 @@ import {
 import type {
   DayPlanView,
   PlanItem,
+  PlanStatus,
   UpdatePreferencePayload,
   UserPreference,
   WeekPlan,
 } from '../types'
-import { groupItemsToDay, isToday, mondayOfWeek, todayDate } from '../utils/date'
+import {
+  groupItemsToDay,
+  groupPlanByDay,
+  isToday,
+  mondayOfWeek,
+  todayDate,
+} from '../utils/date'
+
+export type ViewMode = 'day' | 'week'
+
+function isWeekConfirmedStatus(status: PlanStatus | null | undefined): boolean {
+  return status === 'confirmed' || status === 'active'
+}
 
 export function useWeekPlan() {
   const selectedDate = ref(todayDate())
+  const viewMode = ref<ViewMode>('day')
   const dayPlan = ref<DayPlanView | null>(null)
   const plan = ref<WeekPlan | null>(null)
   const preference = ref<UserPreference | null>(null)
   const loading = ref(false)
   const confirming = ref(false)
+  const confirmingWeek = ref(false)
   const savingPrefs = ref(false)
   const busyKey = ref<string | null>(null)
   const error = ref('')
   const notice = ref('')
 
+  const weekStart = computed(() => mondayOfWeek(selectedDate.value))
   const hasMenu = computed(() => dayPlan.value?.hasMenu ?? false)
+  const hasWeekPlan = computed(() => Boolean(plan.value?.items.length))
   const isSelectedToday = computed(() => isToday(selectedDate.value))
-  const isConfirmed = computed(() => dayPlan.value?.confirmed ?? false)
+  const isDayConfirmed = computed(() => dayPlan.value?.confirmed ?? false)
+  const weekStatus = computed(() => plan.value?.status ?? dayPlan.value?.weekStatus ?? null)
+  const isWeekDraft = computed(() => weekStatus.value === 'draft')
+  const isWeekConfirmed = computed(() => isWeekConfirmedStatus(weekStatus.value))
 
   const selectedDay = computed(() => {
     if (!dayPlan.value?.hasMenu) return null
     return groupItemsToDay(dayPlan.value.date, dayPlan.value.items)
   })
 
-  const days = computed(() => (selectedDay.value ? [selectedDay.value] : []))
+  const weekDays = computed(() => (plan.value ? groupPlanByDay(plan.value) : []))
+
+  const days = computed(() => {
+    if (viewMode.value === 'week') return weekDays.value
+    return selectedDay.value ? [selectedDay.value] : []
+  })
 
   async function refreshPreferences() {
     preference.value = await getPreferences()
+  }
+
+  async function syncPlanState(date: string = selectedDate.value) {
+    dayPlan.value = await getDayPlan(date)
+    if (dayPlan.value.planId) {
+      plan.value = await getCurrentPlan(dayPlan.value.weekStart)
+    } else {
+      plan.value = null
+    }
   }
 
   async function loadForDate(date: string = selectedDate.value) {
@@ -50,24 +85,22 @@ export function useWeekPlan() {
     loading.value = true
     error.value = ''
     try {
-      dayPlan.value = await getDayPlan(date)
-      if (dayPlan.value.planId) {
-        plan.value = await getCurrentPlan(dayPlan.value.weekStart)
-      } else {
-        plan.value = null
-      }
+      await syncPlanState(date)
       await refreshPreferences()
-      if (dayPlan.value.hasMenu) {
-        notice.value = `已加载 ${date} 的菜单`
+      if (dayPlan.value?.hasMenu) {
+        const statusLabel = isWeekDraft.value ? '（预设中，确认后正式启用）' : ''
+        notice.value = `已加载 ${date} 的菜单${statusLabel}`
+      } else if (hasWeekPlan.value) {
+        notice.value = '本周已有预设菜单，换一天查看或确认整周'
       } else {
-        notice.value = '这一天还没有菜单，可生成本周菜单'
+        notice.value = '这一天还没有菜单，可生成本周预设'
       }
     } catch (e) {
       dayPlan.value = null
       plan.value = null
       const message = e instanceof Error ? e.message : '加载失败'
       if (message.includes('还没有菜单') || message.includes('Not Found')) {
-        notice.value = '这一天还没有菜单，可生成本周菜单'
+        notice.value = '这一天还没有菜单，可生成本周预设'
         try {
           await refreshPreferences()
         } catch {
@@ -86,13 +119,13 @@ export function useWeekPlan() {
     error.value = ''
     notice.value = ''
     try {
-      const weekStart = mondayOfWeek(selectedDate.value)
-      plan.value = await generatePlan(weekStart)
+      const start = weekStart.value
+      plan.value = await generatePlan(start)
       dayPlan.value = await getDayPlan(selectedDate.value)
       await refreshPreferences()
-      notice.value = dayPlan.value.hasMenu
-        ? `${selectedDate.value} 的菜单已就绪`
-        : '本周菜单已生成，所选日期暂无菜品'
+      viewMode.value = 'week'
+      notice.value =
+        '本周预设菜单已生成，可先换菜调整，满意后点「确认设为本周菜单」。确认后仍可随时换菜。'
     } catch (e) {
       error.value = e instanceof Error ? e.message : '生成失败'
     } finally {
@@ -100,17 +133,32 @@ export function useWeekPlan() {
     }
   }
 
-  async function confirmMenu() {
-    if (!isSelectedToday.value) return
+  async function confirmDay() {
+    if (!hasMenu.value) return
     confirming.value = true
     error.value = ''
     try {
       dayPlan.value = await confirmDayPlan(selectedDate.value)
-      notice.value = '已确认并设为今日菜单'
+      notice.value = `已确认 ${selectedDate.value} 的菜单，仍可点「换」调整菜品`
     } catch (e) {
       error.value = e instanceof Error ? e.message : '确认失败'
     } finally {
       confirming.value = false
+    }
+  }
+
+  async function confirmWeek() {
+    if (!hasWeekPlan.value) return
+    confirmingWeek.value = true
+    error.value = ''
+    try {
+      plan.value = await confirmWeekPlan(weekStart.value)
+      dayPlan.value = await getDayPlan(selectedDate.value)
+      notice.value = '本周菜单已确认启用，随时可以换菜调整'
+    } catch (e) {
+      error.value = e instanceof Error ? e.message : '确认失败'
+    } finally {
+      confirmingWeek.value = false
     }
   }
 
@@ -168,23 +216,31 @@ export function useWeekPlan() {
 
   return {
     selectedDate,
+    viewMode,
     dayPlan,
     plan,
     preference,
     days,
+    weekDays,
     selectedDay,
+    weekStart,
     hasMenu,
+    hasWeekPlan,
     isSelectedToday,
-    isConfirmed,
+    isDayConfirmed,
+    isWeekDraft,
+    isWeekConfirmed,
     loading,
     confirming,
+    confirmingWeek,
     savingPrefs,
     busyKey,
     error,
     notice,
     loadForDate,
     generate,
-    confirmMenu,
+    confirmDay,
+    confirmWeek,
     savePreferences,
     reroll,
     feedback,

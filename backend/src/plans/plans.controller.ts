@@ -20,6 +20,11 @@ export class PlansController {
     return this.recommendationService.getCurrentPlan();
   }
 
+  @Post('week/:weekStart/confirm')
+  confirmWeek(@Param('weekStart', DayDatePipe) weekStart: string) {
+    return this.recommendationService.confirmWeekMenu(weekStart);
+  }
+
   @Get('day/:date')
   dayMenu(@Param('date', DayDatePipe) date: string) {
     return this.recommendationService.getDayMenu(date);

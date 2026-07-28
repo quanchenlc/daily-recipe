@@ -11,21 +11,27 @@ import type { DayMeals, PlanItem } from './types'
 
 const {
   selectedDate,
+  viewMode,
   plan,
   preference,
   days,
+  weekStart,
   hasMenu,
-  isSelectedToday,
-  isConfirmed,
+  hasWeekPlan,
+  isDayConfirmed,
+  isWeekDraft,
+  isWeekConfirmed,
   loading,
   confirming,
+  confirmingWeek,
   savingPrefs,
   busyKey,
   error,
   notice,
   loadForDate,
   generate,
-  confirmMenu,
+  confirmDay,
+  confirmWeek,
   savePreferences,
   reroll,
   feedback,
@@ -40,6 +46,12 @@ const familySize = computed(() => {
   if (!p) return 2
   return (p.adultsCount ?? 0) + (p.elderlyCount ?? 0) + (p.childrenCount ?? 0) || 2
 })
+
+const showBoard = computed(
+  () =>
+    (viewMode.value === 'week' && hasWeekPlan.value) ||
+    (viewMode.value === 'day' && hasMenu.value),
+)
 
 onMounted(() => {
   void loadForDate()
@@ -65,10 +77,30 @@ async function onFeedbackSubmit(payload: { rating: number; comment: string }) {
     <header class="hero">
       <p class="brand">每日菜谱</p>
       <p class="hero-copy">
-        先选日期看当天菜单；点菜品看采购明细，点「买菜」汇总当天食材。选今天时可确认设为今日菜单。
+        先生成本周预设菜单，确认后正式启用；确认前后都可以随时换菜。
       </p>
 
       <DatePicker v-model="selectedDate" />
+
+      <div class="view-toggle" role="tablist" aria-label="查看范围">
+        <button
+          type="button"
+          class="view-toggle-btn"
+          :class="{ 'view-toggle-btn--active': viewMode === 'day' }"
+          @click="viewMode = 'day'"
+        >
+          看当天
+        </button>
+        <button
+          type="button"
+          class="view-toggle-btn"
+          :class="{ 'view-toggle-btn--active': viewMode === 'week' }"
+          :disabled="!hasWeekPlan"
+          @click="viewMode = 'week'"
+        >
+          看整周
+        </button>
+      </div>
 
       <div class="hero-actions">
         <button
@@ -77,7 +109,13 @@ async function onFeedbackSubmit(payload: { rating: number; comment: string }) {
           :disabled="loading"
           @click="generate"
         >
-          {{ loading ? '生成中…' : hasMenu ? '重新生成本周' : '生成本周菜单' }}
+          {{
+            loading
+              ? '生成中…'
+              : hasWeekPlan
+                ? '重新生成预设'
+                : '生成本周预设菜单'
+          }}
         </button>
         <button
           type="button"
@@ -88,13 +126,22 @@ async function onFeedbackSubmit(payload: { rating: number; comment: string }) {
           刷新
         </button>
         <button
-          v-if="isSelectedToday && hasMenu && !isConfirmed"
+          v-if="hasWeekPlan && isWeekDraft"
+          type="button"
+          class="btn btn-accent"
+          :disabled="confirmingWeek"
+          @click="confirmWeek"
+        >
+          {{ confirmingWeek ? '确认中…' : '确认设为本周菜单' }}
+        </button>
+        <button
+          v-if="hasMenu && !isDayConfirmed"
           type="button"
           class="btn btn-accent"
           :disabled="confirming"
-          @click="confirmMenu"
+          @click="confirmDay"
         >
-          {{ confirming ? '确认中…' : '确认设为今日菜单' }}
+          {{ confirming ? '确认中…' : '确认当天菜单' }}
         </button>
       </div>
     </header>
@@ -108,18 +155,24 @@ async function onFeedbackSubmit(payload: { rating: number; comment: string }) {
     <section class="panel">
       <div v-if="notice" class="banner banner-ok">{{ notice }}</div>
       <div v-if="error" class="banner banner-err">{{ error }}</div>
-      <div v-if="isSelectedToday && isConfirmed" class="banner banner-ok">
-        今日菜单已确认
+      <div v-if="hasWeekPlan && isWeekDraft" class="banner banner-warn">
+        本周菜单为预设状态，确认后正式启用（仍可换菜）
+      </div>
+      <div v-if="hasWeekPlan && isWeekConfirmed" class="banner banner-ok">
+        本周菜单已确认 · 周起始 {{ weekStart }}
+      </div>
+      <div v-if="hasMenu && isDayConfirmed" class="banner banner-ok">
+        {{ selectedDate }} 当天菜单已确认
       </div>
     </section>
 
-    <section v-if="!hasMenu && !loading" class="empty">
+    <section v-if="!showBoard && !loading" class="empty">
       <h2>这一天还没有菜单</h2>
-      <p>可以换一天查看，或点「生成本周菜单」为这一周安排午晚餐。</p>
+      <p>可以换一天查看，或点「生成本周预设菜单」先安排一周午晚餐。</p>
     </section>
 
     <WeekBoard
-      v-if="hasMenu"
+      v-if="showBoard"
       :days="days"
       :busy-key="busyKey"
       @reroll="reroll"
@@ -130,8 +183,10 @@ async function onFeedbackSubmit(payload: { rating: number; comment: string }) {
 
     <p class="footer-note">
       {{
-        hasMenu
-          ? `${selectedDate} · ${plan?.items.length ?? 0} 道（本周）`
+        hasWeekPlan
+          ? `${weekStart} 周 · ${plan?.items.length ?? 0} 道 · ${
+              isWeekDraft ? '预设中' : '已确认'
+            }`
           : 'Daily Recipe'
       }}
     </p>
