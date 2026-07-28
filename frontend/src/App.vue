@@ -28,6 +28,7 @@ const {
   isDayConfirmed,
   loading,
   confirming,
+  regeneratingDay,
   savingPrefs,
   busyKey,
   error,
@@ -35,6 +36,7 @@ const {
   loadForDate,
   generate,
   confirmDay,
+  regenerateDay,
   savePreferences,
   reroll,
   feedback,
@@ -141,6 +143,14 @@ async function onFeedbackSubmit(payload: { rating: number; comment: string }) {
                   ? '重新生成本周'
                   : '生成本周菜单'
             }}
+          </button>
+          <button
+            type="button"
+            class="btn btn-ghost"
+            :disabled="loading || regeneratingDay"
+            @click="regenerateDay"
+          >
+            {{ regeneratingDay ? '生成中…' : '重新生成当天' }}
           </button>
           <button
             type="button"

@@ -43,6 +43,11 @@ export class PlansController {
     return this.recommendationService.getDayMenu(date);
   }
 
+  @Post('day/:date/regenerate')
+  regenerateDay(@Param('date', DayDatePipe) date: string) {
+    return this.recommendationService.regenerateDay(date);
+  }
+
   @Post('day/:date/confirm')
   confirmDay(@Param('date', DayDatePipe) date: string) {
     return this.recommendationService.confirmDayMenu(date);

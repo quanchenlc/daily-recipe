@@ -5,6 +5,7 @@ import {
   getDayPlan,
   getCurrentPlan,
   getPreferences,
+  regenerateDayPlan,
   rerollItem,
   submitFeedback,
   updatePreferences,
@@ -33,6 +34,7 @@ export function useWeekPlan() {
   const preference = ref<UserPreference | null>(null)
   const loading = ref(false)
   const confirming = ref(false)
+  const regeneratingDay = ref(false)
   const savingPrefs = ref(false)
   const busyKey = ref<string | null>(null)
   const error = ref('')
@@ -133,6 +135,22 @@ export function useWeekPlan() {
     }
   }
 
+  async function regenerateDay() {
+    regeneratingDay.value = true
+    error.value = ''
+    notice.value = ''
+    try {
+      plan.value = await regenerateDayPlan(selectedDate.value)
+      dayPlan.value = await getDayPlan(selectedDate.value)
+      viewMode.value = 'day'
+      notice.value = `已重新生成 ${selectedDate.value} 的菜单`
+    } catch (e) {
+      error.value = e instanceof Error ? e.message : '重新生成当天失败'
+    } finally {
+      regeneratingDay.value = false
+    }
+  }
+
   async function savePreferences(payload: UpdatePreferencePayload) {
     savingPrefs.value = true
     error.value = ''
@@ -200,6 +218,7 @@ export function useWeekPlan() {
     isDayConfirmed,
     loading,
     confirming,
+    regeneratingDay,
     savingPrefs,
     busyKey,
     error,
@@ -207,6 +226,7 @@ export function useWeekPlan() {
     loadForDate,
     generate,
     confirmDay,
+    regenerateDay,
     savePreferences,
     reroll,
     feedback,
