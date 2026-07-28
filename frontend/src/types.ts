@@ -1,14 +1,35 @@
 export type MealSlot = 'lunch' | 'dinner'
 export type DishType = 'dish' | 'soup'
+export type DishCategory = 'meat' | 'vegetable' | 'soup'
 
 export interface MealSlotConfig {
-  dishes: number
+  /** @deprecated migrated to meatDishes + vegetableDishes */
+  dishes?: number
+  meatDishes: number
+  vegetableDishes: number
   soups: number
 }
 
 export interface MealConfig {
   lunch: MealSlotConfig
   dinner: MealSlotConfig
+}
+
+export function normalizeSlotConfig(raw: Partial<MealSlotConfig>): MealSlotConfig {
+  if (raw.meatDishes !== undefined || raw.vegetableDishes !== undefined) {
+    return {
+      meatDishes: raw.meatDishes ?? 0,
+      vegetableDishes: raw.vegetableDishes ?? 0,
+      soups: raw.soups ?? 0,
+    }
+  }
+  const dishes = raw.dishes ?? 2
+  const veg = dishes <= 1 ? 0 : Math.max(1, Math.min(dishes - 1, Math.round(dishes / 3)))
+  return {
+    meatDishes: Math.max(0, dishes - veg),
+    vegetableDishes: veg,
+    soups: raw.soups ?? 1,
+  }
 }
 
 export interface Recipe {
@@ -30,6 +51,7 @@ export interface PlanItem {
   serveDate: string
   mealSlot: MealSlot
   dishType: DishType
+  dishCategory: DishCategory
   slotIndex: number
   reason: string | null
 }

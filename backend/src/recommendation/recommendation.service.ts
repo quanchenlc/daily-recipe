@@ -9,11 +9,13 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Between, Repository } from 'typeorm';
 import { LlmService } from '../llm/llm.service';
 import {
+  DishCategory,
   DishType,
   LlmMenuItem,
   MealSlot,
   RecommendContext,
 } from '../llm/llm.types';
+import { ensureDetailedIngredients } from '../llm/ingredient-detail';
 import { PlanItem } from '../plans/entities/plan-item.entity';
 import { RecommendationHistory } from '../plans/entities/recommendation-history.entity';
 import { DailyMenuConfirmation } from '../plans/entities/daily-menu-confirmation.entity';
@@ -65,6 +67,7 @@ export class RecommendationService {
           serveDate: item.date,
           mealSlot: item.mealSlot,
           dishType: item.dishType,
+          dishCategory: item.dishCategory,
           slotIndex: item.slotIndex,
           reason: item.reason ?? null,
         }),
@@ -179,6 +182,7 @@ export class RecommendationService {
       date: item.serveDate,
       mealSlot: item.mealSlot,
       dishType: item.dishType ?? 'dish',
+      dishCategory: item.dishCategory ?? 'meat',
       slotIndex: item.slotIndex ?? 0,
       avoidNames: weekNames,
     };
@@ -285,12 +289,37 @@ export class RecommendationService {
 
     if (working.length !== expectedCount) {
       this.logger.warn(
-        `LLM item count ${working.length} != expected ${expectedCount}, regenerating via mock fallback`,
+        `LLM item count ${working.length} != expected ${expectedCount}, filling gaps`,
       );
-      working = this.alignItemsToSlots(
-        this.llm.mockMenu(context).items,
-        expectedSlots,
-      );
+      working = this.llm
+        .mockMenu(context)
+        .items.slice(0, expectedCount)
+        .map((item, index) => ({
+          ...item,
+          date: expectedSlots[index].date,
+          mealSlot: expectedSlots[index].mealSlot,
+          dishType: expectedSlots[index].dishType,
+          dishCategory: expectedSlots[index].dishCategory,
+          slotIndex: expectedSlots[index].slotIndex,
+          recipeName:
+            working[index]?.recipeName?.trim() || item.recipeName,
+        }));
+    } else {
+      const mockItems = this.llm.mockMenu(context).items;
+      working = working.map((item, index) => {
+        const name = item?.recipeName?.trim();
+        if (name && !/^时令家常菜\d*$/.test(name) && !/^家常汤\d*$/.test(name)) {
+          return item;
+        }
+        return {
+          ...mockItems[index],
+          date: expectedSlots[index].date,
+          mealSlot: expectedSlots[index].mealSlot,
+          dishType: expectedSlots[index].dishType,
+          dishCategory: expectedSlots[index].dishCategory,
+          slotIndex: expectedSlots[index].slotIndex,
+        };
+      });
     }
 
     const used = new Set<string>();
@@ -298,10 +327,16 @@ export class RecommendationService {
       date: string;
       mealSlot: MealSlot;
       dishType: DishType;
+      dishCategory: DishCategory;
       slotIndex: number;
       recipeId: string;
       reason?: string;
     }> = [];
+
+    const people =
+      context.familyComposition.adults +
+      context.familyComposition.elderly +
+      context.familyComposition.children;
 
     for (let i = 0; i < expectedCount; i++) {
       const slot = expectedSlots[i];
@@ -329,13 +364,14 @@ export class RecommendationService {
             date: slot.date,
             mealSlot: slot.mealSlot,
             dishType: slot.dishType,
+            dishCategory: slot.dishCategory,
             slotIndex: slot.slotIndex,
             avoidNames: [...used, ...blocked],
           },
           blockedRecipeNames: [...blocked],
         });
         const next = replacement.items[0];
-        name = next?.recipeName?.trim() || `家常小炒${guard}`;
+        name = next?.recipeName?.trim() || `补充小炒${guard}`;
         description = next?.description;
         ingredients = next?.ingredients;
         tags = next?.tags;
@@ -354,7 +390,7 @@ export class RecommendationService {
       const recipe = await this.recipesService.findOrCreateFromLlm({
         name,
         description,
-        ingredients,
+        ingredients: ensureDetailedIngredients(name, ingredients, Math.max(1, people)),
         tags,
         cookMinutes,
         difficulty,
@@ -366,6 +402,7 @@ export class RecommendationService {
         date: slot.date,
         mealSlot: slot.mealSlot,
         dishType: slot.dishType,
+        dishCategory: slot.dishCategory,
         slotIndex: slot.slotIndex,
         recipeId: recipe.id,
         reason,
@@ -382,6 +419,7 @@ export class RecommendationService {
         date: slots[index].date,
         mealSlot: slots[index].mealSlot,
         dishType: slots[index].dishType,
+        dishCategory: slots[index].dishCategory,
         slotIndex: slots[index].slotIndex,
       }));
     }

@@ -8,10 +8,18 @@ import { ConfigService } from '@nestjs/config';
 import axios from 'axios';
 import {
   DEFAULT_MEAL_CONFIG,
-  itemsPerDay,
+  normalizeMealConfig,
   totalItemsForWeek,
 } from '../preferences/preference.types';
+import { ensureDetailedIngredients } from './ingredient-detail';
 import {
+  inventRecipeName,
+  isVegetableDish,
+  MOCK_DISHES,
+  MOCK_SOUPS,
+} from './mock-dishes';
+import {
+  DishCategory,
   DishType,
   LlmMenuItem,
   LlmMenuResult,
@@ -19,193 +27,16 @@ import {
   RecommendContext,
 } from './llm.types';
 
-const MOCK_DISHES = [
-  {
-    name: '番茄牛腩',
-    tags: ['家常', '下饭'],
-    ingredients: ['牛腩', '番茄', '洋葱'],
-    cookMinutes: 60,
-    difficulty: '中等',
-  },
-  {
-    name: '蒜蓉西兰花',
-    tags: ['清淡', '蔬菜'],
-    ingredients: ['西兰花', '大蒜'],
-    cookMinutes: 15,
-    difficulty: '简单',
-  },
-  {
-    name: '宫保鸡丁',
-    tags: ['微辣', '下饭'],
-    ingredients: ['鸡胸肉', '花生', '干辣椒'],
-    cookMinutes: 30,
-    difficulty: '中等',
-  },
-  {
-    name: '清蒸鲈鱼',
-    tags: ['清淡', '海鲜'],
-    ingredients: ['鲈鱼', '姜', '葱'],
-    cookMinutes: 25,
-    difficulty: '中等',
-  },
-  {
-    name: '土豆烧排骨',
-    tags: ['家常', '硬菜'],
-    ingredients: ['排骨', '土豆'],
-    cookMinutes: 50,
-    difficulty: '中等',
-  },
-  {
-    name: '茄子豆角',
-    tags: ['素菜', '家常'],
-    ingredients: ['茄子', '豆角'],
-    cookMinutes: 25,
-    difficulty: '简单',
-  },
-  {
-    name: '酸辣土豆丝',
-    tags: ['快手', '开胃'],
-    ingredients: ['土豆', '干辣椒', '醋'],
-    cookMinutes: 15,
-    difficulty: '简单',
-  },
-  {
-    name: '香菇青菜',
-    tags: ['清淡', '蔬菜'],
-    ingredients: ['香菇', '青菜'],
-    cookMinutes: 15,
-    difficulty: '简单',
-  },
-  {
-    name: '红烧茄子',
-    tags: ['下饭', '素菜'],
-    ingredients: ['茄子', '蒜'],
-    cookMinutes: 20,
-    difficulty: '简单',
-  },
-  {
-    name: '可乐鸡翅',
-    tags: ['甜咸', '孩子爱吃'],
-    ingredients: ['鸡翅', '可乐'],
-    cookMinutes: 35,
-    difficulty: '简单',
-  },
-  {
-    name: '鱼香肉丝',
-    tags: ['微辣', '下饭'],
-    ingredients: ['猪里脊', '木耳', '胡萝卜'],
-    cookMinutes: 25,
-    difficulty: '中等',
-  },
-  {
-    name: '虾仁滑蛋',
-    tags: ['快手', '蛋白'],
-    ingredients: ['虾仁', '鸡蛋'],
-    cookMinutes: 15,
-    difficulty: '简单',
-  },
-  {
-    name: '青椒肉丝',
-    tags: ['家常', '快手'],
-    ingredients: ['青椒', '猪肉丝'],
-    cookMinutes: 20,
-    difficulty: '简单',
-  },
-  {
-    name: '西红柿鸡蛋面',
-    tags: ['面食', '快手'],
-    ingredients: ['面条', '番茄', '鸡蛋'],
-    cookMinutes: 20,
-    difficulty: '简单',
-  },
-  {
-    name: '麻婆豆腐',
-    tags: ['微辣', '下饭'],
-    ingredients: ['豆腐', '牛肉末'],
-    cookMinutes: 20,
-    difficulty: '简单',
-  },
-  {
-    name: '洋葱炒鸡蛋',
-    tags: ['家常', '快手'],
-    ingredients: ['洋葱', '鸡蛋'],
-    cookMinutes: 15,
-    difficulty: '简单',
-  },
-  {
-    name: '芹菜炒香干',
-    tags: ['素菜', '清淡'],
-    ingredients: ['芹菜', '香干'],
-    cookMinutes: 15,
-    difficulty: '简单',
-  },
-  {
-    name: '糖醋里脊',
-    tags: ['酸甜', '硬菜'],
-    ingredients: ['里脊', '淀粉', '番茄酱'],
-    cookMinutes: 35,
-    difficulty: '中等',
-  },
-  {
-    name: '蚝油生菜',
-    tags: ['蔬菜', '快手'],
-    ingredients: ['生菜', '蚝油'],
-    cookMinutes: 10,
-    difficulty: '简单',
-  },
-];
-
-const MOCK_SOUPS = [
-  {
-    name: '冬瓜排骨汤',
-    tags: ['汤品', '清淡'],
-    ingredients: ['排骨', '冬瓜'],
-    cookMinutes: 60,
-    difficulty: '简单',
-  },
-  {
-    name: '番茄蛋花汤',
-    tags: ['汤品', '快手'],
-    ingredients: ['番茄', '鸡蛋'],
-    cookMinutes: 15,
-    difficulty: '简单',
-  },
-  {
-    name: '紫菜虾皮汤',
-    tags: ['汤品', '清淡'],
-    ingredients: ['紫菜', '虾皮'],
-    cookMinutes: 10,
-    difficulty: '简单',
-  },
-  {
-    name: '玉米排骨汤',
-    tags: ['汤品', '家常'],
-    ingredients: ['排骨', '玉米'],
-    cookMinutes: 55,
-    difficulty: '简单',
-  },
-  {
-    name: '山药鸡汤',
-    tags: ['汤品', '滋补'],
-    ingredients: ['鸡肉', '山药'],
-    cookMinutes: 70,
-    difficulty: '中等',
-  },
-  {
-    name: '萝卜牛腩汤',
-    tags: ['汤品', '暖胃'],
-    ingredients: ['牛腩', '白萝卜'],
-    cookMinutes: 80,
-    difficulty: '中等',
-  },
-];
-
 interface MenuSlot {
   date: string;
   mealSlot: MealSlot;
   dishType: DishType;
+  dishCategory: DishCategory;
   slotIndex: number;
 }
+
+/** Single LLM call handles at most this many items reliably */
+const SINGLE_CALL_ITEM_LIMIT = 12;
 
 @Injectable()
 export class LlmService {
@@ -223,12 +54,69 @@ export class LlmService {
       return this.mockMenu(context);
     }
 
+    if (context.target) {
+      return this.generateOnceWithRetry(context);
+    }
+
+    const mealConfig = context.mealConfig ?? DEFAULT_MEAL_CONFIG;
+    const total = totalItemsForWeek(context.days, mealConfig);
+
+    if (total <= SINGLE_CALL_ITEM_LIMIT) {
+      return this.generateOnceWithRetry(context);
+    }
+
+    return this.generateByDay(context);
+  }
+
+  private async generateByDay(context: RecommendContext): Promise<LlmMenuResult> {
+    const items: LlmMenuItem[] = [];
+    const usedInWeek: string[] = [];
+
+    for (let d = 0; d < context.days; d++) {
+      const date = this.addDays(context.weekStart, d);
+      const dayContext: RecommendContext = {
+        ...context,
+        weekStart: date,
+        days: 1,
+        blockedRecipeNames: [
+          ...new Set([...context.blockedRecipeNames, ...usedInWeek]),
+        ],
+      };
+
+      try {
+        const dayResult = await this.generateOnceWithRetry(dayContext);
+        items.push(...dayResult.items);
+        usedInWeek.push(...dayResult.items.map((i) => i.recipeName));
+      } catch (error) {
+        this.logger.warn(
+          `Day ${date} LLM failed, using mock fallback: ${String(error)}`,
+        );
+        const fallback = this.mockMenu(dayContext);
+        items.push(...fallback.items);
+        usedInWeek.push(...fallback.items.map((i) => i.recipeName));
+      }
+    }
+
+    return { weekStart: context.weekStart, items };
+  }
+
+  private async generateOnceWithRetry(
+    context: RecommendContext,
+  ): Promise<LlmMenuResult> {
     const maxRetries = Number(this.config.get('LLM_MAX_RETRIES', '2'));
     let lastError: unknown;
     for (let attempt = 0; attempt <= maxRetries; attempt++) {
       try {
         const content = await this.callChat(context);
-        return this.parseMenu(content, context);
+        const parsed = this.parseMenu(content, context);
+        const expected = this.buildSlots(context).length;
+        if (parsed.items.length !== expected) {
+          this.logger.warn(
+            `LLM returned ${parsed.items.length} items, expected ${expected}`,
+          );
+          return this.fillMissingSlots(parsed.items, context);
+        }
+        return parsed;
       } catch (error) {
         lastError = error;
         this.logger.warn(
@@ -241,33 +129,160 @@ export class LlmService {
     );
   }
 
+  private fillMissingSlots(
+    partial: LlmMenuItem[],
+    context: RecommendContext,
+  ): LlmMenuResult {
+    const slots = this.buildSlots(context);
+    const aligned = this.alignToSlots(partial, slots);
+    const used = new Set(aligned.map((i) => i.recipeName));
+    const blocked = new Set(
+      [
+        ...context.blockedRecipeNames,
+        ...(context.target?.avoidNames ?? []),
+      ].map((n) => n.trim()),
+    );
+    const people = familySize(context);
+
+    const filled = aligned.map((item, index) => {
+      if (item?.recipeName?.trim()) {
+        return this.enrichItem(item, people);
+      }
+      const slot = slots[index];
+      const invented = inventRecipeName(slot.dishCategory, used, blocked);
+      used.add(invented.name);
+      return {
+        date: slot.date,
+        mealSlot: slot.mealSlot,
+        dishType: slot.dishType,
+        dishCategory: slot.dishCategory,
+        slotIndex: slot.slotIndex,
+        recipeName: invented.name,
+        reason: '补充推荐',
+        description: `${invented.name}，适合家庭日常。`,
+        ingredients: ensureDetailedIngredients(
+          invented.name,
+          invented.ingredients,
+          people,
+        ),
+        tags: invented.tags,
+        cookMinutes: invented.cookMinutes,
+        difficulty: invented.difficulty,
+      };
+    });
+
+    return { weekStart: context.weekStart, items: filled };
+  }
+
+  private enrichItem(item: LlmMenuItem, people: number): LlmMenuItem {
+    return {
+      ...item,
+      ingredients: ensureDetailedIngredients(
+        item.recipeName,
+        item.ingredients,
+        people,
+      ),
+    };
+  }
+
+  private alignToSlots(items: LlmMenuItem[], slots: MenuSlot[]): LlmMenuItem[] {
+    const result: LlmMenuItem[] = [];
+    for (let i = 0; i < slots.length; i++) {
+      const slot = slots[i];
+      result.push(
+        items[i]
+          ? {
+              ...items[i],
+              date: slot.date,
+              mealSlot: slot.mealSlot,
+              dishType: slot.dishType,
+              dishCategory: slot.dishCategory,
+              slotIndex: slot.slotIndex,
+            }
+          : {
+              date: slot.date,
+              mealSlot: slot.mealSlot,
+              dishType: slot.dishType,
+              dishCategory: slot.dishCategory,
+              slotIndex: slot.slotIndex,
+              recipeName: '',
+            },
+      );
+    }
+    return result;
+  }
+
   buildSlots(context: RecommendContext): MenuSlot[] {
+    const mealConfig = normalizeMealConfig(context.mealConfig);
+
     if (context.target) {
       return [
         {
           date: context.target.date,
           mealSlot: context.target.mealSlot,
           dishType: context.target.dishType,
+          dishCategory: context.target.dishCategory,
           slotIndex: context.target.slotIndex,
         },
       ];
     }
 
-    const mealConfig = context.mealConfig ?? DEFAULT_MEAL_CONFIG;
     const slots: MenuSlot[] = [];
     for (let i = 0; i < context.days; i++) {
       const date = this.addDays(context.weekStart, i);
       for (const mealSlot of context.mealSlots) {
         const cfg = mealConfig[mealSlot];
-        for (let j = 0; j < cfg.dishes; j++) {
-          slots.push({ date, mealSlot, dishType: 'dish', slotIndex: j });
+        for (let j = 0; j < cfg.meatDishes; j++) {
+          slots.push({
+            date,
+            mealSlot,
+            dishType: 'dish',
+            dishCategory: 'meat',
+            slotIndex: j,
+          });
+        }
+        for (let j = 0; j < cfg.vegetableDishes; j++) {
+          slots.push({
+            date,
+            mealSlot,
+            dishType: 'dish',
+            dishCategory: 'vegetable',
+            slotIndex: j,
+          });
         }
         for (let j = 0; j < cfg.soups; j++) {
-          slots.push({ date, mealSlot, dishType: 'soup', slotIndex: j });
+          slots.push({
+            date,
+            mealSlot,
+            dishType: 'soup',
+            dishCategory: 'soup',
+            slotIndex: j,
+          });
         }
       }
     }
     return slots;
+  }
+
+  private mealInstruction(context: RecommendContext): string {
+    const mealConfig = normalizeMealConfig(context.mealConfig);
+    const expectedCount = context.target
+      ? 1
+      : totalItemsForWeek(context.days, mealConfig);
+
+    if (context.target) {
+      const cat =
+        context.target.dishCategory === 'vegetable'
+          ? '素菜'
+          : context.target.dishCategory === 'meat'
+            ? '荤菜'
+            : '汤';
+      return `只生成 1 道${cat}，替换 ${context.target.date} 的 ${context.target.mealSlot}（dishCategory=${context.target.dishCategory}, slotIndex=${context.target.slotIndex}）。`;
+    }
+
+    const l = mealConfig.lunch;
+    const d = mealConfig.dinner;
+    return `生成 ${context.days} 天。每餐荤素搭配：午餐 ${l.meatDishes}荤+${l.vegetableDishes}素+${l.soups}汤，晚餐 ${d.meatDishes}荤+${d.vegetableDishes}素+${d.soups}汤，共 ${expectedCount} 条。荤菜 tags 含「荤菜」，素菜 tags 含「素菜」，汤品 tags 含「汤品」。`;
   }
 
   private async callChat(context: RecommendContext) {
@@ -276,33 +291,31 @@ export class LlmService {
       .replace(/\/$/, '');
     const model = this.config.get<string>('LLM_MODEL', 'gpt-4o-mini');
     const apiKey = this.config.get<string>('LLM_API_KEY', '');
-    const timeout = Number(this.config.get('LLM_TIMEOUT_MS', '60000'));
-    const mealConfig = context.mealConfig ?? DEFAULT_MEAL_CONFIG;
-    const expectedCount = context.target
-      ? 1
-      : totalItemsForWeek(context.days, mealConfig);
+    const timeout = Number(this.config.get('LLM_TIMEOUT_MS', '90000'));
 
-    const system = `你是家庭周菜单助手。按中式家庭餐桌习惯推荐午餐和晚餐，每餐可包含多道菜和多道汤。必须输出严格 JSON，不要 markdown。
+    const system = `你是家庭周菜单助手。按中式家庭餐桌习惯推荐午餐和晚餐，每餐荤素搭配。必须输出严格 JSON，不要 markdown。
 规则：
 1. 不要推荐 blockedRecipeNames 中的菜
 2. 同一周内菜名不能重复
-3. 可以发明新菜（家常中式为主）
-4. 结合家庭人数、口味备注、likes/dislikes/constraints
-5. 有儿童时适当清淡少辣；有老人时避免过硬难嚼
-6. dishType 为 dish 表示主菜/配菜，soup 表示汤品；汤品 tags 应含「汤品」
-7. JSON schema:
-{"weekStart":"YYYY-MM-DD","items":[{"date":"YYYY-MM-DD","mealSlot":"lunch|dinner","dishType":"dish|soup","slotIndex":0,"recipeName":"string","reason":"string","description":"string","ingredients":["string"],"tags":["string"],"cookMinutes":30,"difficulty":"简单|中等|困难"}]}`;
+3. recipeName 必须是具体中式菜名，禁止占位名
+4. 每餐必须有荤有素（按 mealConfig 的 meatDishes / vegetableDishes 数量）
+5. dishCategory: meat=荤菜, vegetable=素菜, soup=汤品；tags 必须含对应标签
+6. ingredients 至少 6 条，格式「食材名 数量单位」，须包含主料、配菜、调味料（如姜蒜、生抽、料酒、盐、油等），按 familyComposition 估算份量
+7. 示例水煮牛肉 ingredients: ["牛肉 400g","豆芽 200g","生菜 150g","干辣椒 15g","花椒 5g","豆瓣酱 2勺","姜 3片","蒜 3瓣","料酒 1勺","淀粉 1勺","食用油 适量"]
+8. items 数量必须严格等于要求
+9. JSON schema:
+{"weekStart":"YYYY-MM-DD","items":[{"date":"YYYY-MM-DD","mealSlot":"lunch|dinner","dishType":"dish|soup","dishCategory":"meat|vegetable|soup","slotIndex":0,"recipeName":"string","reason":"string","description":"string","ingredients":["string"],"tags":["string"],"cookMinutes":30,"difficulty":"简单|中等|困难"}]}`;
 
     const userPayload = {
       ...context,
-      instruction: context.target
-        ? `只生成 1 道${context.target.dishType === 'soup' ? '汤' : '菜'}，替换 ${context.target.date} 的 ${context.target.mealSlot}（slotIndex=${context.target.slotIndex}）。不要使用 avoidNames。`
-        : `生成 ${context.days} 天菜单。每天午餐 ${mealConfig.lunch.dishes} 道菜 + ${mealConfig.lunch.soups} 道汤，晚餐 ${mealConfig.dinner.dishes} 道菜 + ${mealConfig.dinner.soups} 道汤，共 ${expectedCount} 条 items。`,
+      mealConfig: normalizeMealConfig(context.mealConfig),
+      instruction: this.mealInstruction(context),
     };
 
     const payload: Record<string, unknown> = {
       model,
       temperature: 0.8,
+      max_tokens: 8192,
       messages: [
         { role: 'system', content: system },
         { role: 'user', content: JSON.stringify(userPayload) },
@@ -343,14 +356,30 @@ export class LlmService {
     if (!parsed?.items || !Array.isArray(parsed.items)) {
       throw new Error('Invalid LLM JSON: missing items');
     }
+    const slots = this.buildSlots(context);
+    const people = familySize(context);
     parsed.weekStart = parsed.weekStart || context.weekStart;
-    parsed.items = parsed.items.map((item, index) => ({
-      ...item,
-      mealSlot: item.mealSlot === 'lunch' ? 'lunch' : 'dinner',
-      dishType: item.dishType === 'soup' ? 'soup' : 'dish',
-      slotIndex: typeof item.slotIndex === 'number' ? item.slotIndex : index,
-      recipeName: String(item.recipeName).trim(),
-    }));
+    parsed.items = parsed.items.map((item, index) => {
+      const slot = slots[index];
+      const dishCategory =
+        item.dishCategory === 'vegetable' ||
+        item.dishCategory === 'meat' ||
+        item.dishCategory === 'soup'
+          ? item.dishCategory
+          : slot?.dishCategory ?? 'meat';
+      return this.enrichItem(
+        {
+          ...item,
+          mealSlot: item.mealSlot === 'lunch' ? 'lunch' : 'dinner',
+          dishType: item.dishType === 'soup' ? 'soup' : 'dish',
+          dishCategory,
+          slotIndex:
+            typeof item.slotIndex === 'number' ? item.slotIndex : index,
+          recipeName: String(item.recipeName).trim(),
+        },
+        people,
+      );
+    });
     return parsed;
   }
 
@@ -363,17 +392,35 @@ export class LlmService {
         ...context.dislikes,
       ].map((n) => n.trim()),
     );
+    const people = familySize(context);
 
-    const dishPool = [
-      ...MOCK_DISHES,
+    const meatPool = [
+      ...MOCK_DISHES.filter((d) => !isVegetableDish(d)),
       ...context.knownRecipes
-        .filter((r) => !(r.tags ?? []).includes('汤品'))
+        .filter(
+          (r) =>
+            !(r.tags ?? []).includes('汤品') &&
+            !(r.tags ?? []).includes('素菜'),
+        )
         .map((r) => ({
           name: r.name,
-          tags: r.tags ?? [],
+          tags: r.tags ?? ['荤菜'],
           ingredients: [] as string[],
           cookMinutes: r.cookMinutes ?? 30,
           difficulty: '中等',
+        })),
+    ].filter((d) => !blocked.has(d.name));
+
+    const vegPool = [
+      ...MOCK_DISHES.filter((d) => isVegetableDish(d)),
+      ...context.knownRecipes
+        .filter((r) => (r.tags ?? []).includes('素菜'))
+        .map((r) => ({
+          name: r.name,
+          tags: r.tags ?? ['素菜'],
+          ingredients: [] as string[],
+          cookMinutes: r.cookMinutes ?? 15,
+          difficulty: '简单',
         })),
     ].filter((d) => !blocked.has(d.name));
 
@@ -390,54 +437,55 @@ export class LlmService {
         })),
     ].filter((d) => !blocked.has(d.name));
 
-    const shuffledDishes = [...dishPool].sort(() => Math.random() - 0.5);
+    const shuffledMeat = [...meatPool].sort(() => Math.random() - 0.5);
+    const shuffledVeg = [...vegPool].sort(() => Math.random() - 0.5);
     const shuffledSoups = [...soupPool].sort(() => Math.random() - 0.5);
     const picked: LlmMenuItem[] = [];
     const used = new Set<string>();
 
-    let inventDish = 1;
-    let inventSoup = 1;
-
     const pickFromPool = (
       pool: typeof MOCK_DISHES,
-      dishType: DishType,
-      inventRef: { value: number },
+      category: DishCategory,
     ) => {
-      let dish = pool.find((d) => !used.has(d.name) && !blocked.has(d.name));
-      if (!dish) {
-        const prefix = dishType === 'soup' ? '家常汤' : '时令家常菜';
-        let name = `${prefix}${inventRef.value}`;
-        while (blocked.has(name) || used.has(name)) {
-          inventRef.value += 1;
-          name = `${prefix}${inventRef.value}`;
-        }
-        dish = {
-          name,
-          tags: dishType === 'soup' ? ['汤品', '家常'] : ['家常', '新菜'],
-          ingredients: dishType === 'soup' ? ['时令蔬菜', '姜片'] : ['时令蔬菜', '鸡蛋'],
-          cookMinutes: dishType === 'soup' ? 40 : 25,
-          difficulty: '简单',
+      const dish = pool.find((d) => !used.has(d.name) && !blocked.has(d.name));
+      if (dish) {
+        used.add(dish.name);
+        return {
+          ...dish,
+          ingredients: ensureDetailedIngredients(dish.name, dish.ingredients, people),
         };
-        inventRef.value += 1;
       }
-      used.add(dish.name);
-      return dish;
+      const invented = inventRecipeName(category, used, blocked);
+      used.add(invented.name);
+      return {
+        ...invented,
+        ingredients: ensureDetailedIngredients(
+          invented.name,
+          invented.ingredients,
+          people,
+        ),
+      };
     };
 
     for (const slot of this.buildSlots(context)) {
-      const pool = slot.dishType === 'soup' ? shuffledSoups : shuffledDishes;
-      const inventRef = slot.dishType === 'soup' ? { value: inventSoup } : { value: inventDish };
-      const dish = pickFromPool(pool, slot.dishType, inventRef);
-      if (slot.dishType === 'soup') inventSoup = inventRef.value;
-      else inventDish = inventRef.value;
+      const pool =
+        slot.dishCategory === 'soup'
+          ? shuffledSoups
+          : slot.dishCategory === 'vegetable'
+            ? shuffledVeg
+            : shuffledMeat;
+      const dish = pickFromPool(pool, slot.dishCategory);
 
       picked.push({
         date: slot.date,
         mealSlot: slot.mealSlot,
         dishType: slot.dishType,
+        dishCategory: slot.dishCategory,
         slotIndex: slot.slotIndex,
         recipeName: dish.name,
-        reason: '本地 mock 推荐（未配置 LLM_API_KEY）',
+        reason: this.isConfigured()
+          ? '补充推荐'
+          : '本地 mock 推荐（未配置 LLM_API_KEY）',
         description: `${dish.name}，适合家庭日常。`,
         ingredients: dish.ingredients,
         tags: dish.tags,
@@ -454,4 +502,9 @@ export class LlmService {
     date.setUTCDate(date.getUTCDate() + days);
     return date.toISOString().slice(0, 10);
   }
+}
+
+function familySize(context: RecommendContext) {
+  const f = context.familyComposition;
+  return Math.max(1, f.adults + f.elderly + f.children);
 }

@@ -10,6 +10,11 @@ export class HealthController {
     return {
       ok: true,
       service: 'daily-recipe-api',
+      version: '2.5.0',
+      features: {
+        preferencesPatch: true,
+        multiDishMeals: true,
+      },
       db: this.dataSource.isInitialized ? 'connected' : 'disconnected',
       time: new Date().toISOString(),
     };

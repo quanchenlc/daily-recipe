@@ -1,10 +1,12 @@
 export type MealSlot = 'lunch' | 'dinner';
 export type DishType = 'dish' | 'soup';
+export type DishCategory = 'meat' | 'vegetable' | 'soup';
 
 export interface LlmMenuItem {
   date: string;
   mealSlot: MealSlot;
   dishType: DishType;
+  dishCategory?: DishCategory;
   slotIndex?: number;
   recipeName: string;
   reason?: string;
@@ -49,6 +51,7 @@ export interface RecommendContext {
     date: string;
     mealSlot: MealSlot;
     dishType: DishType;
+    dishCategory: DishCategory;
     slotIndex: number;
     avoidNames: string[];
   };

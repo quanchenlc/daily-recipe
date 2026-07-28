@@ -48,7 +48,7 @@ npm run build
 
 ### 1. 分支
 
-**Settings → Source → Branch** = `cursor/recipe-recommendation-plan-f7fd`
+**Settings → Source → Branch** = `main`（合并后请用 main，不要用旧 feature 分支）
 
 ### 2. 环境变量（Variables）——健康检查失败多半是这里没配
 
@@ -87,7 +87,36 @@ PLAN_DAYS=7
 
 **Networking → Generate Domain**
 
-### 4. 验证
+### 5. 自动部署（推代码不用每次手动点）
+
+Railway **可以**在 GitHub 推送后自动构建，不必每次 Redeploy。
+
+**一次性检查：**
+
+1. 服务 **Settings → Source**
+   - **Repository**：`quanchenlc/daily-recipe`
+   - **Branch**：`main`
+2. 改完分支后若卡片显示 **「Edited / 1 Change」**，只需 **点一次 Deploy** 让配置生效
+3. 之后每次 `git push` 到 `main`，Railway 会自动开始 Build + Deploy（约 2–5 分钟）
+
+```mermaid
+flowchart LR
+  A["git push main"] --> B["GitHub 通知 Railway"]
+  B --> C["自动 Build"]
+  C --> D["自动 Deploy"]
+  D --> E["API 更新"]
+
+  classDef ok fill:#0f766e,stroke:#5eead4,color:#f8fafc
+  class A,B,C,D,E ok
+```
+
+**若推送后没自动部署：**
+
+- Settings → 确认连的是 GitHub（不是只上传 Dockerfile）
+- 确认 Branch 是 `main`（不是已删除的旧分支）
+- Deployments 页看是否有新记录；没有则 Disconnect 后重新 Connect GitHub
+
+### 6. 验证
 
 ```text
 https://你的域名.up.railway.app/api/health

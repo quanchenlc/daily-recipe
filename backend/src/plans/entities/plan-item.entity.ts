@@ -11,6 +11,7 @@ import { WeekPlan } from './week-plan.entity';
 
 export type MealSlot = 'lunch' | 'dinner';
 export type DishType = 'dish' | 'soup';
+export type DishCategory = 'meat' | 'vegetable' | 'soup';
 
 @Entity('plan_items')
 export class PlanItem {
@@ -41,6 +42,9 @@ export class PlanItem {
 
   @Column({ type: 'varchar', length: 16, name: 'dish_type', default: 'dish' })
   dishType: DishType;
+
+  @Column({ type: 'varchar', length: 16, name: 'dish_category', default: 'meat' })
+  dishCategory: DishCategory;
 
   @Column({ type: 'int', name: 'slot_index', default: 0 })
   slotIndex: number;

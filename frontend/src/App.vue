@@ -1,11 +1,13 @@
 <script setup lang="ts">
-import { onMounted, ref, watch } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import DatePicker from './components/DatePicker.vue'
+import DayShoppingModal from './components/DayShoppingModal.vue'
+import DishDetailModal from './components/DishDetailModal.vue'
 import FeedbackModal from './components/FeedbackModal.vue'
 import PreferencesForm from './components/PreferencesForm.vue'
 import WeekBoard from './components/WeekBoard.vue'
 import { useWeekPlan } from './composables/useWeekPlan'
-import type { PlanItem } from './types'
+import type { DayMeals, PlanItem } from './types'
 
 const {
   selectedDate,
@@ -30,6 +32,14 @@ const {
 } = useWeekPlan()
 
 const activeItem = ref<PlanItem | null>(null)
+const detailItem = ref<PlanItem | null>(null)
+const shoppingDay = ref<DayMeals | null>(null)
+
+const familySize = computed(() => {
+  const p = preference.value
+  if (!p) return 2
+  return (p.adultsCount ?? 0) + (p.elderlyCount ?? 0) + (p.childrenCount ?? 0) || 2
+})
 
 onMounted(() => {
   void loadForDate()
@@ -54,7 +64,9 @@ async function onFeedbackSubmit(payload: { rating: number; comment: string }) {
   <div class="app-shell">
     <header class="hero">
       <p class="brand">每日菜谱</p>
-      <p class="hero-copy">先选日期，查看当天菜单；选今天时可确认设为今日菜单。</p>
+      <p class="hero-copy">
+        先选日期看当天菜单；点菜品看采购明细，点「买菜」汇总当天食材。选今天时可确认设为今日菜单。
+      </p>
 
       <DatePicker v-model="selectedDate" />
 
@@ -112,6 +124,8 @@ async function onFeedbackSubmit(payload: { rating: number; comment: string }) {
       :busy-key="busyKey"
       @reroll="reroll"
       @feedback="activeItem = $event"
+      @detail="detailItem = $event"
+      @day-shop="shoppingDay = $event"
     />
 
     <p class="footer-note">
@@ -127,6 +141,18 @@ async function onFeedbackSubmit(payload: { rating: number; comment: string }) {
       :submitting="busyKey?.startsWith('feedback-') ?? false"
       @close="activeItem = null"
       @submit="onFeedbackSubmit"
+    />
+
+    <DishDetailModal
+      :item="detailItem"
+      :family-size="familySize"
+      @close="detailItem = null"
+    />
+
+    <DayShoppingModal
+      :day="shoppingDay"
+      :family-size="familySize"
+      @close="shoppingDay = null"
     />
   </div>
 </template>

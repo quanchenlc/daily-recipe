@@ -82,5 +82,13 @@ export function updatePreferences(payload: UpdatePreferencePayload) {
   return request<UserPreference>('/preferences', {
     method: 'PATCH',
     body: JSON.stringify(payload),
+  }).catch(async (error) => {
+    if (error instanceof Error && error.message.includes('404')) {
+      return request<UserPreference>('/preferences', {
+        method: 'POST',
+        body: JSON.stringify(payload),
+      })
+    }
+    throw error
   })
 }
