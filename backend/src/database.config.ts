@@ -3,6 +3,7 @@ import { TypeOrmModuleOptions } from '@nestjs/typeorm';
 import { Feedback } from './recipes/entities/feedback.entity';
 import { Recipe } from './recipes/entities/recipe.entity';
 import { PlanItem } from './plans/entities/plan-item.entity';
+import { DailyMenuConfirmation } from './plans/entities/daily-menu-confirmation.entity';
 import { RecommendationHistory } from './plans/entities/recommendation-history.entity';
 import { WeekPlan } from './plans/entities/week-plan.entity';
 import { UserPreference } from './preferences/entities/user-preference.entity';
@@ -131,6 +132,7 @@ export function createTypeOrmOptions(
       Feedback,
       WeekPlan,
       PlanItem,
+      DailyMenuConfirmation,
       RecommendationHistory,
       UserPreference,
     ],

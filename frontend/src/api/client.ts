@@ -1,4 +1,4 @@
-import type { UpdatePreferencePayload, UserPreference, WeekPlan } from '../types'
+import type { DayPlanView, UpdatePreferencePayload, UserPreference, WeekPlan } from '../types'
 
 /** Local dev uses Vite proxy `/api`. Production uses absolute API origin. */
 const API_BASE = (import.meta.env.VITE_API_BASE_URL as string | undefined)?.replace(
@@ -41,8 +41,20 @@ export function generatePlan(weekStart?: string) {
   })
 }
 
-export function getCurrentPlan() {
-  return request<WeekPlan>('/plans/current')
+export function getCurrentPlan(weekStart?: string) {
+  const query = weekStart ? `?weekStart=${encodeURIComponent(weekStart)}` : ''
+  return request<WeekPlan>(`/plans/current${query}`)
+}
+
+export function getDayPlan(date: string) {
+  return request<DayPlanView>(`/plans/day/${date}`)
+}
+
+export function confirmDayPlan(date: string) {
+  return request<DayPlanView>(`/plans/day/${date}/confirm`, {
+    method: 'POST',
+    body: '{}',
+  })
 }
 
 export function rerollItem(planId: string, itemId: string) {

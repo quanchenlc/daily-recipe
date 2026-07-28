@@ -41,6 +41,16 @@ export interface WeekPlan {
   items: PlanItem[]
 }
 
+export interface DayPlanView {
+  date: string
+  weekStart: string
+  planId: string | null
+  hasMenu: boolean
+  confirmed: boolean
+  confirmedAt: string | null
+  items: PlanItem[]
+}
+
 export interface UserPreference {
   id: string
   likes: string[] | null

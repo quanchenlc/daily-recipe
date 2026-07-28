@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
+import { onMounted, ref, watch } from 'vue'
+import DatePicker from './components/DatePicker.vue'
 import FeedbackModal from './components/FeedbackModal.vue'
 import PreferencesForm from './components/PreferencesForm.vue'
 import WeekBoard from './components/WeekBoard.vue'
@@ -7,16 +8,22 @@ import { useWeekPlan } from './composables/useWeekPlan'
 import type { PlanItem } from './types'
 
 const {
+  selectedDate,
   plan,
   preference,
   days,
+  hasMenu,
+  isSelectedToday,
+  isConfirmed,
   loading,
+  confirming,
   savingPrefs,
   busyKey,
   error,
   notice,
-  loadCurrent,
+  loadForDate,
   generate,
+  confirmMenu,
   savePreferences,
   reroll,
   feedback,
@@ -25,7 +32,11 @@ const {
 const activeItem = ref<PlanItem | null>(null)
 
 onMounted(() => {
-  void loadCurrent()
+  void loadForDate()
+})
+
+watch(selectedDate, (date, prev) => {
+  if (date !== prev) void loadForDate(date)
 })
 
 async function onFeedbackSubmit(payload: { rating: number; comment: string }) {
@@ -43,7 +54,10 @@ async function onFeedbackSubmit(payload: { rating: number; comment: string }) {
   <div class="app-shell">
     <header class="hero">
       <p class="brand">每日菜谱</p>
-      <p class="hero-copy">按你家人数和口味安排一周午晚餐，几菜几汤你来定。</p>
+      <p class="hero-copy">先选日期，查看当天菜单；选今天时可确认设为今日菜单。</p>
+
+      <DatePicker v-model="selectedDate" />
+
       <div class="hero-actions">
         <button
           type="button"
@@ -51,15 +65,24 @@ async function onFeedbackSubmit(payload: { rating: number; comment: string }) {
           :disabled="loading"
           @click="generate"
         >
-          {{ loading ? '生成中…' : plan ? '重新生成本周' : '生成本周菜单' }}
+          {{ loading ? '生成中…' : hasMenu ? '重新生成本周' : '生成本周菜单' }}
         </button>
         <button
           type="button"
           class="btn btn-ghost"
           :disabled="loading"
-          @click="loadCurrent"
+          @click="loadForDate()"
         >
-          刷新本周
+          刷新
+        </button>
+        <button
+          v-if="isSelectedToday && hasMenu && !isConfirmed"
+          type="button"
+          class="btn btn-accent"
+          :disabled="confirming"
+          @click="confirmMenu"
+        >
+          {{ confirming ? '确认中…' : '确认设为今日菜单' }}
         </button>
       </div>
     </header>
@@ -73,15 +96,18 @@ async function onFeedbackSubmit(payload: { rating: number; comment: string }) {
     <section class="panel">
       <div v-if="notice" class="banner banner-ok">{{ notice }}</div>
       <div v-if="error" class="banner banner-err">{{ error }}</div>
+      <div v-if="isSelectedToday && isConfirmed" class="banner banner-ok">
+        今日菜单已确认
+      </div>
     </section>
 
-    <section v-if="!plan && !loading" class="empty">
-      <h2>这周吃什么？</h2>
-      <p>先设置家庭人数和每餐几菜几汤，再点「生成本周菜单」。我会尽量 30 天内不重复。</p>
+    <section v-if="!hasMenu && !loading" class="empty">
+      <h2>这一天还没有菜单</h2>
+      <p>可以换一天查看，或点「生成本周菜单」为这一周安排午晚餐。</p>
     </section>
 
     <WeekBoard
-      v-if="plan"
+      v-if="hasMenu"
       :days="days"
       :busy-key="busyKey"
       @reroll="reroll"
@@ -89,7 +115,11 @@ async function onFeedbackSubmit(payload: { rating: number; comment: string }) {
     />
 
     <p class="footer-note">
-      {{ plan ? `周起始 ${plan.weekStart} · 共 ${plan.items.length} 道` : 'Daily Recipe' }}
+      {{
+        hasMenu
+          ? `${selectedDate} · ${plan?.items.length ?? 0} 道（本周）`
+          : 'Daily Recipe'
+      }}
     </p>
 
     <FeedbackModal

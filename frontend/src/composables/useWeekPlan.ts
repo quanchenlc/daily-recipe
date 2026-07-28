@@ -1,42 +1,73 @@
 import { computed, ref } from 'vue'
 import {
+  confirmDayPlan,
   generatePlan,
+  getDayPlan,
   getCurrentPlan,
   getPreferences,
   rerollItem,
   submitFeedback,
   updatePreferences,
 } from '../api/client'
-import type { PlanItem, UpdatePreferencePayload, UserPreference, WeekPlan } from '../types'
-import { groupPlanByDay } from '../utils/date'
+import type {
+  DayPlanView,
+  PlanItem,
+  UpdatePreferencePayload,
+  UserPreference,
+  WeekPlan,
+} from '../types'
+import { groupItemsToDay, isToday, mondayOfWeek, todayDate } from '../utils/date'
 
 export function useWeekPlan() {
+  const selectedDate = ref(todayDate())
+  const dayPlan = ref<DayPlanView | null>(null)
   const plan = ref<WeekPlan | null>(null)
   const preference = ref<UserPreference | null>(null)
   const loading = ref(false)
+  const confirming = ref(false)
   const savingPrefs = ref(false)
   const busyKey = ref<string | null>(null)
   const error = ref('')
   const notice = ref('')
 
-  const days = computed(() => (plan.value ? groupPlanByDay(plan.value) : []))
+  const hasMenu = computed(() => dayPlan.value?.hasMenu ?? false)
+  const isSelectedToday = computed(() => isToday(selectedDate.value))
+  const isConfirmed = computed(() => dayPlan.value?.confirmed ?? false)
+
+  const selectedDay = computed(() => {
+    if (!dayPlan.value?.hasMenu) return null
+    return groupItemsToDay(dayPlan.value.date, dayPlan.value.items)
+  })
+
+  const days = computed(() => (selectedDay.value ? [selectedDay.value] : []))
 
   async function refreshPreferences() {
     preference.value = await getPreferences()
   }
 
-  async function loadCurrent() {
+  async function loadForDate(date: string = selectedDate.value) {
+    selectedDate.value = date
     loading.value = true
     error.value = ''
     try {
-      plan.value = await getCurrentPlan()
+      dayPlan.value = await getDayPlan(date)
+      if (dayPlan.value.planId) {
+        plan.value = await getCurrentPlan(dayPlan.value.weekStart)
+      } else {
+        plan.value = null
+      }
       await refreshPreferences()
-      notice.value = '已加载本周菜单'
+      if (dayPlan.value.hasMenu) {
+        notice.value = `已加载 ${date} 的菜单`
+      } else {
+        notice.value = '这一天还没有菜单，可生成本周菜单'
+      }
     } catch (e) {
+      dayPlan.value = null
       plan.value = null
       const message = e instanceof Error ? e.message : '加载失败'
       if (message.includes('还没有菜单') || message.includes('Not Found')) {
-        notice.value = '本周还没有菜单，点上方按钮生成即可'
+        notice.value = '这一天还没有菜单，可生成本周菜单'
         try {
           await refreshPreferences()
         } catch {
@@ -55,13 +86,31 @@ export function useWeekPlan() {
     error.value = ''
     notice.value = ''
     try {
-      plan.value = await generatePlan()
+      const weekStart = mondayOfWeek(selectedDate.value)
+      plan.value = await generatePlan(weekStart)
+      dayPlan.value = await getDayPlan(selectedDate.value)
       await refreshPreferences()
-      notice.value = '本周菜单已生成'
+      notice.value = dayPlan.value.hasMenu
+        ? `${selectedDate.value} 的菜单已就绪`
+        : '本周菜单已生成，所选日期暂无菜品'
     } catch (e) {
       error.value = e instanceof Error ? e.message : '生成失败'
     } finally {
       loading.value = false
+    }
+  }
+
+  async function confirmMenu() {
+    if (!isSelectedToday.value) return
+    confirming.value = true
+    error.value = ''
+    try {
+      dayPlan.value = await confirmDayPlan(selectedDate.value)
+      notice.value = '已确认并设为今日菜单'
+    } catch (e) {
+      error.value = e instanceof Error ? e.message : '确认失败'
+    } finally {
+      confirming.value = false
     }
   }
 
@@ -85,8 +134,9 @@ export function useWeekPlan() {
     error.value = ''
     try {
       plan.value = await rerollItem(plan.value.id, item.id)
+      dayPlan.value = await getDayPlan(selectedDate.value)
       const kind = item.dishType === 'soup' ? '汤' : '菜'
-      notice.value = `已更换：${item.serveDate} ${item.mealSlot === 'lunch' ? '午餐' : '晚餐'}的${kind}`
+      notice.value = `已更换：${item.mealSlot === 'lunch' ? '午餐' : '晚餐'}的${kind}`
     } catch (e) {
       error.value = e instanceof Error ? e.message : '换菜失败'
     } finally {
@@ -117,16 +167,24 @@ export function useWeekPlan() {
   }
 
   return {
+    selectedDate,
+    dayPlan,
     plan,
     preference,
     days,
+    selectedDay,
+    hasMenu,
+    isSelectedToday,
+    isConfirmed,
     loading,
+    confirming,
     savingPrefs,
     busyKey,
     error,
     notice,
-    loadCurrent,
+    loadForDate,
     generate,
+    confirmMenu,
     savePreferences,
     reroll,
     feedback,

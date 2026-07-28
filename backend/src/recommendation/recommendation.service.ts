@@ -16,6 +16,7 @@ import {
 } from '../llm/llm.types';
 import { PlanItem } from '../plans/entities/plan-item.entity';
 import { RecommendationHistory } from '../plans/entities/recommendation-history.entity';
+import { DailyMenuConfirmation } from '../plans/entities/daily-menu-confirmation.entity';
 import { WeekPlan } from '../plans/entities/week-plan.entity';
 import { PreferencesService } from '../preferences/preferences.service';
 import { RecipesService } from '../recipes/recipes.service';
@@ -36,6 +37,8 @@ export class RecommendationService {
     private readonly itemsRepo: Repository<PlanItem>,
     @InjectRepository(RecommendationHistory)
     private readonly historyRepo: Repository<RecommendationHistory>,
+    @InjectRepository(DailyMenuConfirmation)
+    private readonly confirmationsRepo: Repository<DailyMenuConfirmation>,
   ) {}
 
   async generateWeek(weekStartInput?: string) {
@@ -73,17 +76,79 @@ export class RecommendationService {
   }
 
   async getCurrentPlan() {
-    const weekStart = this.currentMonday();
+    return this.getPlanForWeek(this.currentMonday());
+  }
+
+  async getPlanForWeek(weekStartInput?: string) {
+    const weekStart = weekStartInput || this.currentMonday();
     const plan = await this.plansRepo.findOne({
       where: { weekStart },
       relations: { items: { recipe: true } },
       order: { createdAt: 'DESC' },
     });
     if (!plan) {
-      throw new NotFoundException('当前周还没有菜单，请先调用 /plans/generate');
+      throw new NotFoundException('该周还没有菜单，请先生成');
     }
     plan.items.sort(this.sortItems);
     return plan;
+  }
+
+  async getDayMenu(serveDate: string) {
+    const weekStart = this.mondayOf(serveDate);
+    const plan = await this.plansRepo.findOne({
+      where: { weekStart },
+      relations: { items: { recipe: true } },
+      order: { createdAt: 'DESC' },
+    });
+
+    const dayItems = (plan?.items ?? [])
+      .filter((item) => item.serveDate === serveDate)
+      .sort(this.sortItems);
+
+    const confirmation = await this.confirmationsRepo.findOne({
+      where: { serveDate },
+    });
+
+    return {
+      date: serveDate,
+      weekStart,
+      planId: plan?.id ?? null,
+      hasMenu: dayItems.length > 0,
+      confirmed: Boolean(confirmation),
+      confirmedAt: confirmation?.confirmedAt?.toISOString() ?? null,
+      items: dayItems,
+    };
+  }
+
+  async confirmDayMenu(serveDate: string) {
+    const today = this.formatDate(new Date());
+    if (serveDate !== today) {
+      throw new BadRequestException('只能确认今天的菜单');
+    }
+
+    const dayMenu = await this.getDayMenu(serveDate);
+    if (!dayMenu.hasMenu || !dayMenu.planId) {
+      throw new BadRequestException('今天还没有菜单，请先生成');
+    }
+
+    const existing = await this.confirmationsRepo.findOne({
+      where: { serveDate },
+    });
+    if (existing) {
+      if (existing.planId !== dayMenu.planId) {
+        existing.planId = dayMenu.planId;
+        await this.confirmationsRepo.save(existing);
+      }
+      return this.getDayMenu(serveDate);
+    }
+
+    await this.confirmationsRepo.save(
+      this.confirmationsRepo.create({
+        serveDate,
+        planId: dayMenu.planId,
+      }),
+    );
+    return this.getDayMenu(serveDate);
   }
 
   async getPlan(id: string) {
@@ -323,14 +388,16 @@ export class RecommendationService {
     return items.slice(0, slots.length);
   }
 
-  private currentMonday() {
-    const now = new Date();
-    const day = now.getDay();
+  private mondayOf(dateStr: string) {
+    const date = new Date(`${dateStr}T00:00:00`);
+    const day = date.getDay();
     const diff = day === 0 ? -6 : 1 - day;
-    const monday = new Date(now);
-    monday.setHours(0, 0, 0, 0);
-    monday.setDate(now.getDate() + diff);
-    return this.formatDate(monday);
+    date.setDate(date.getDate() + diff);
+    return this.formatDate(date);
+  }
+
+  private currentMonday() {
+    return this.mondayOf(this.formatDate(new Date()));
   }
 
   private addDays(dateStr: string, days: number) {

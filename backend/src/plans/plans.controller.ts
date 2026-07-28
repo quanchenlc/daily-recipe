@@ -1,5 +1,6 @@
-import { Body, Controller, Get, Param, ParseUUIDPipe, Post } from '@nestjs/common';
+import { Body, Controller, Get, Param, ParseUUIDPipe, Post, Query } from '@nestjs/common';
 import { RecommendationService } from '../recommendation/recommendation.service';
+import { DayDatePipe } from './dto/day-date.param';
 import { GeneratePlanDto } from './dto/generate-plan.dto';
 
 @Controller('plans')
@@ -12,8 +13,21 @@ export class PlansController {
   }
 
   @Get('current')
-  current() {
+  current(@Query('weekStart') weekStart?: string) {
+    if (weekStart) {
+      return this.recommendationService.getPlanForWeek(weekStart);
+    }
     return this.recommendationService.getCurrentPlan();
+  }
+
+  @Get('day/:date')
+  dayMenu(@Param('date', DayDatePipe) date: string) {
+    return this.recommendationService.getDayMenu(date);
+  }
+
+  @Post('day/:date/confirm')
+  confirmDay(@Param('date', DayDatePipe) date: string) {
+    return this.recommendationService.confirmDayMenu(date);
   }
 
   @Get(':id')

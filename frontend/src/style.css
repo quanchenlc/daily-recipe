@@ -115,6 +115,55 @@ a {
   margin-top: 22px;
 }
 
+.date-picker {
+  position: relative;
+  z-index: 1;
+  margin-top: 18px;
+  padding: 14px 16px;
+  border-radius: 18px;
+  background: rgba(247, 251, 247, 0.1);
+  border: 1px solid rgba(247, 251, 247, 0.18);
+}
+
+.date-picker-label {
+  display: block;
+  margin-bottom: 8px;
+  font-size: 0.86rem;
+  color: rgba(247, 251, 247, 0.78);
+}
+
+.date-picker-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.date-picker-input {
+  flex: 1;
+  min-width: 160px;
+  border: 0;
+  border-radius: 12px;
+  padding: 10px 12px;
+  background: rgba(255, 255, 255, 0.95);
+  color: var(--ink);
+}
+
+.date-picker-hint {
+  margin: 10px 0 0;
+  font-size: 0.9rem;
+  color: rgba(247, 251, 247, 0.88);
+}
+
+.date-picker-tag {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: rgba(232, 137, 76, 0.35);
+  font-size: 0.78rem;
+}
+
 .btn {
   border: 0;
   border-radius: 999px;
@@ -142,6 +191,13 @@ a {
   background: rgba(247, 251, 247, 0.12);
   color: #f7fbf7;
   border: 1px solid rgba(247, 251, 247, 0.24);
+}
+
+.btn-accent {
+  background: rgba(247, 251, 247, 0.95);
+  color: var(--sage-deep);
+  font-weight: 700;
+  box-shadow: 0 8px 20px rgba(20, 35, 25, 0.15);
 }
 
 .btn-soft {
