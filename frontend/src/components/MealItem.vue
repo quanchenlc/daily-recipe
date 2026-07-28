@@ -6,6 +6,7 @@ defineProps<{
   item: PlanItem
   busy: boolean
   compact?: boolean
+  readonly?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -23,7 +24,13 @@ const emit = defineEmits<{
       'meal-item--compact': compact !== false,
     }"
   >
-    <button type="button" class="meal-main meal-main--clickable" @click="emit('detail')">
+    <button
+      type="button"
+      class="meal-main"
+      :class="{ 'meal-main--clickable': !readonly }"
+      :disabled="readonly"
+      @click="!readonly && emit('detail')"
+    >
       <span class="meal-kind" :class="`meal-kind--${item.dishCategory || 'meat'}`">
         {{ categoryLabel(item.dishCategory, item.dishType) }}
       </span>
@@ -36,7 +43,7 @@ const emit = defineEmits<{
       </div>
     </button>
 
-    <div class="meal-actions">
+    <div v-if="!readonly" class="meal-actions">
       <button
         type="button"
         class="btn btn-soft btn-tiny btn-icon"

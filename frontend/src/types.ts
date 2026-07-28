@@ -76,6 +76,29 @@ export interface DayPlanView {
   items: PlanItem[]
 }
 
+export interface MenuHistoryEntry {
+  date: string
+  confirmedAt: string
+  dishCount: number
+  preview: string[]
+}
+
+export interface MenuHistorySnapshotItem {
+  recipeName: string
+  mealSlot: MealSlot
+  dishType: DishType
+  dishCategory: DishCategory
+  slotIndex: number
+  tags?: string[] | null
+  cookMinutes?: number | null
+}
+
+export interface MenuHistoryDetail {
+  date: string
+  confirmedAt: string
+  items: MenuHistorySnapshotItem[]
+}
+
 export interface UserPreference {
   id: string
   likes: string[] | null

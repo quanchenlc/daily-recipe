@@ -1,4 +1,11 @@
-import type { DayPlanView, UpdatePreferencePayload, UserPreference, WeekPlan } from '../types'
+import type {
+  DayPlanView,
+  MenuHistoryDetail,
+  MenuHistoryEntry,
+  UpdatePreferencePayload,
+  UserPreference,
+  WeekPlan,
+} from '../types'
 
 /** Local dev uses Vite proxy `/api`. Production uses absolute API origin. */
 const API_BASE = (import.meta.env.VITE_API_BASE_URL as string | undefined)?.replace(
@@ -62,6 +69,14 @@ export function confirmWeekPlan(weekStart: string) {
     method: 'POST',
     body: '{}',
   })
+}
+
+export function getMenuHistory(limit = 30) {
+  return request<MenuHistoryEntry[]>(`/plans/history?limit=${limit}`)
+}
+
+export function getMenuHistoryDetail(date: string) {
+  return request<MenuHistoryDetail>(`/plans/history/${date}`)
 }
 
 export function rerollItem(planId: string, itemId: string) {
