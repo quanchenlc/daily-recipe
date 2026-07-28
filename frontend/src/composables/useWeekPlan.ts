@@ -1,7 +1,6 @@
 import { computed, ref } from 'vue'
 import {
   confirmDayPlan,
-  confirmWeekPlan,
   generatePlan,
   getDayPlan,
   getCurrentPlan,
@@ -13,7 +12,6 @@ import {
 import type {
   DayPlanView,
   PlanItem,
-  PlanStatus,
   UpdatePreferencePayload,
   UserPreference,
   WeekPlan,
@@ -21,16 +19,11 @@ import type {
 import {
   groupItemsToDay,
   groupPlanByDay,
-  isToday,
   mondayOfWeek,
   todayDate,
 } from '../utils/date'
 
 export type ViewMode = 'day' | 'week'
-
-function isWeekConfirmedStatus(status: PlanStatus | null | undefined): boolean {
-  return status === 'confirmed' || status === 'active'
-}
 
 export function useWeekPlan() {
   const selectedDate = ref(todayDate())
@@ -40,7 +33,6 @@ export function useWeekPlan() {
   const preference = ref<UserPreference | null>(null)
   const loading = ref(false)
   const confirming = ref(false)
-  const confirmingWeek = ref(false)
   const savingPrefs = ref(false)
   const busyKey = ref<string | null>(null)
   const error = ref('')
@@ -49,11 +41,7 @@ export function useWeekPlan() {
   const weekStart = computed(() => mondayOfWeek(selectedDate.value))
   const hasMenu = computed(() => dayPlan.value?.hasMenu ?? false)
   const hasWeekPlan = computed(() => Boolean(plan.value?.items.length))
-  const isSelectedToday = computed(() => isToday(selectedDate.value))
   const isDayConfirmed = computed(() => dayPlan.value?.confirmed ?? false)
-  const weekStatus = computed(() => plan.value?.status ?? dayPlan.value?.weekStatus ?? null)
-  const isWeekDraft = computed(() => weekStatus.value === 'draft')
-  const isWeekConfirmed = computed(() => isWeekConfirmedStatus(weekStatus.value))
 
   const selectedDay = computed(() => {
     if (!dayPlan.value?.hasMenu) return null
@@ -88,19 +76,18 @@ export function useWeekPlan() {
       await syncPlanState(date)
       await refreshPreferences()
       if (dayPlan.value?.hasMenu) {
-        const statusLabel = isWeekDraft.value ? '（预设中，确认后正式启用）' : ''
-        notice.value = `已加载 ${date} 的菜单${statusLabel}`
+        notice.value = `已加载 ${date} 的菜单`
       } else if (hasWeekPlan.value) {
-        notice.value = '本周已有预设菜单，换一天查看或确认整周'
+        notice.value = '本周已有菜单，换一天查看'
       } else {
-        notice.value = '这一天还没有菜单，可生成本周预设'
+        notice.value = '这一天还没有菜单，可生成本周菜单'
       }
     } catch (e) {
       dayPlan.value = null
       plan.value = null
       const message = e instanceof Error ? e.message : '加载失败'
       if (message.includes('还没有菜单') || message.includes('Not Found')) {
-        notice.value = '这一天还没有菜单，可生成本周预设'
+        notice.value = '这一天还没有菜单，可生成本周菜单'
         try {
           await refreshPreferences()
         } catch {
@@ -124,8 +111,7 @@ export function useWeekPlan() {
       dayPlan.value = await getDayPlan(selectedDate.value)
       await refreshPreferences()
       viewMode.value = 'week'
-      notice.value =
-        '本周预设菜单已生成，可先换菜调整，满意后点「确认设为本周菜单」。确认后仍可随时换菜。'
+      notice.value = '本周菜单已生成，逐日确认后会收录到历史菜单'
     } catch (e) {
       error.value = e instanceof Error ? e.message : '生成失败'
     } finally {
@@ -144,21 +130,6 @@ export function useWeekPlan() {
       error.value = e instanceof Error ? e.message : '确认失败'
     } finally {
       confirming.value = false
-    }
-  }
-
-  async function confirmWeek() {
-    if (!hasWeekPlan.value) return
-    confirmingWeek.value = true
-    error.value = ''
-    try {
-      plan.value = await confirmWeekPlan(weekStart.value)
-      dayPlan.value = await getDayPlan(selectedDate.value)
-      notice.value = '本周菜单已确认启用，随时可以换菜调整'
-    } catch (e) {
-      error.value = e instanceof Error ? e.message : '确认失败'
-    } finally {
-      confirmingWeek.value = false
     }
   }
 
@@ -226,13 +197,9 @@ export function useWeekPlan() {
     weekStart,
     hasMenu,
     hasWeekPlan,
-    isSelectedToday,
     isDayConfirmed,
-    isWeekDraft,
-    isWeekConfirmed,
     loading,
     confirming,
-    confirmingWeek,
     savingPrefs,
     busyKey,
     error,
@@ -240,7 +207,6 @@ export function useWeekPlan() {
     loadForDate,
     generate,
     confirmDay,
-    confirmWeek,
     savePreferences,
     reroll,
     feedback,

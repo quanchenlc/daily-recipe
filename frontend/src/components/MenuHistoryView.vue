@@ -1,10 +1,10 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import { getMenuHistory, getMenuHistoryDetail } from '../api/client'
+import HistoryMenuDetail from './HistoryMenuDetail.vue'
 import type { MenuHistoryEntry } from '../types'
 import { formatMonthDay } from '../utils/date'
 import { formatConfirmedAt, snapshotToDayMeals } from '../utils/history'
-import WeekBoard from './WeekBoard.vue'
 
 const emit = defineEmits<{
   openDate: [date: string]
@@ -15,7 +15,7 @@ const loading = ref(false)
 const error = ref('')
 const selectedDate = ref<string | null>(null)
 const detailLoading = ref(false)
-const detailDays = ref<ReturnType<typeof snapshotToDayMeals>[]>([])
+const detailDay = ref<ReturnType<typeof snapshotToDayMeals> | null>(null)
 const detailConfirmedAt = ref('')
 
 const hasEntries = computed(() => entries.value.length > 0)
@@ -39,10 +39,10 @@ async function openDetail(date: string) {
   try {
     const detail = await getMenuHistoryDetail(date)
     detailConfirmedAt.value = detail.confirmedAt
-    detailDays.value = [snapshotToDayMeals(detail.date, detail.items)]
+    detailDay.value = snapshotToDayMeals(detail.date, detail.items)
   } catch (e) {
     error.value = e instanceof Error ? e.message : '加载详情失败'
-    detailDays.value = []
+    detailDay.value = null
   } finally {
     detailLoading.value = false
   }
@@ -50,7 +50,7 @@ async function openDetail(date: string) {
 
 function closeDetail() {
   selectedDate.value = null
-  detailDays.value = []
+  detailDay.value = null
 }
 
 onMounted(() => {
@@ -67,7 +67,7 @@ defineExpose({ reload: loadHistory })
       <p class="history-desc">这里只显示你确认过的菜单，重新生成周计划不会删掉记录。</p>
     </header>
 
-    <div v-if="error" class="banner banner-err">{{ error }}</div>
+    <div v-if="error && !selectedDate" class="banner banner-err">{{ error }}</div>
 
     <section v-if="loading" class="empty empty--compact">
       <p>加载中…</p>
@@ -75,7 +75,7 @@ defineExpose({ reload: loadHistory })
 
     <section v-else-if="!hasEntries" class="empty">
       <h2>还没有确认过的菜单</h2>
-      <p>在首页生成菜单并点「确认当天菜单」或「确认设为本周菜单」后，会出现在这里。</p>
+      <p>在首页生成菜单，选好日期后点「确认当天菜单」，就会出现在这里。</p>
     </section>
 
     <ul v-else class="history-list">
@@ -91,7 +91,7 @@ defineExpose({ reload: loadHistory })
       </li>
     </ul>
 
-    <div v-if="selectedDate" class="modal-mask" @click.self="closeDetail">
+    <div v-if="selectedDate" class="modal-mask modal-mask--history" @click.self="closeDetail">
       <div class="modal modal--detail modal--history" role="dialog" aria-modal="true">
         <div class="modal-detail-head">
           <div>
@@ -104,16 +104,13 @@ defineExpose({ reload: loadHistory })
           <button type="button" class="btn btn-soft btn-tiny" @click="closeDetail">关闭</button>
         </div>
 
-        <div v-if="detailLoading" class="empty empty--compact">
-          <p>加载中…</p>
+        <div class="history-detail-body">
+          <div v-if="error" class="banner banner-err">{{ error }}</div>
+          <div v-if="detailLoading" class="empty empty--compact">
+            <p>加载中…</p>
+          </div>
+          <HistoryMenuDetail v-else-if="detailDay" :day="detailDay" />
         </div>
-
-        <WeekBoard
-          v-else-if="detailDays.length"
-          :days="detailDays"
-          :busy-key="null"
-          readonly
-        />
 
         <div class="history-detail-actions">
           <button

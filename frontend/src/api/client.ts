@@ -64,13 +64,6 @@ export function confirmDayPlan(date: string) {
   })
 }
 
-export function confirmWeekPlan(weekStart: string) {
-  return request<WeekPlan>(`/plans/week/${weekStart}/confirm`, {
-    method: 'POST',
-    body: '{}',
-  })
-}
-
 export function getMenuHistory(limit = 30) {
   return request<MenuHistoryEntry[]>(`/plans/history?limit=${limit}`)
 }
