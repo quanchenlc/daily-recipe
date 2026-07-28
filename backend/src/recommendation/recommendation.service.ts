@@ -16,6 +16,7 @@ import {
   RecommendContext,
 } from '../llm/llm.types';
 import { ensureDetailedIngredients } from '../llm/ingredient-detail';
+import { isPlaceholderDishName, inventRecipeName } from '../llm/mock-dishes';
 import { PlanItem } from '../plans/entities/plan-item.entity';
 import { RecommendationHistory } from '../plans/entities/recommendation-history.entity';
 import { DailyMenuConfirmation } from '../plans/entities/daily-menu-confirmation.entity';
@@ -331,7 +332,7 @@ export class RecommendationService {
       const mockItems = this.llm.mockMenu(context).items;
       working = working.map((item, index) => {
         const name = item?.recipeName?.trim();
-        if (name && !/^时令家常菜\d*$/.test(name) && !/^家常汤\d*$/.test(name)) {
+        if (name && !isPlaceholderDishName(name)) {
           return item;
         }
         return {
@@ -378,7 +379,9 @@ export class RecommendationService {
       let reason = item.reason;
 
       while (
-        (blocked.has(name.toLowerCase()) || used.has(name.toLowerCase())) &&
+        (blocked.has(name.toLowerCase()) ||
+          used.has(name.toLowerCase()) ||
+          isPlaceholderDishName(name)) &&
         guard < 20
       ) {
         const replacement = this.llm.mockMenu({
@@ -394,7 +397,15 @@ export class RecommendationService {
           blockedRecipeNames: [...blocked],
         });
         const next = replacement.items[0];
-        name = next?.recipeName?.trim() || `补充小炒${guard}`;
+        const invented = inventRecipeName(
+          slot.dishCategory ?? 'meat',
+          used,
+          blocked,
+        );
+        name = next?.recipeName?.trim() || invented.name;
+        if (isPlaceholderDishName(name)) {
+          name = invented.name;
+        }
         description = next?.description;
         ingredients = next?.ingredients;
         tags = next?.tags;
@@ -404,7 +415,11 @@ export class RecommendationService {
         guard += 1;
       }
 
-      if (blocked.has(name.toLowerCase()) || used.has(name.toLowerCase())) {
+      if (
+        blocked.has(name.toLowerCase()) ||
+        used.has(name.toLowerCase()) ||
+        isPlaceholderDishName(name)
+      ) {
         throw new BadRequestException(
           `无法在冷却规则下生成合法菜品，冲突菜名：${name}`,
         );
