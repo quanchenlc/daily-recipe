@@ -57,6 +57,13 @@ export function confirmDayPlan(date: string) {
   })
 }
 
+export function confirmWeekPlan(weekStart: string) {
+  return request<WeekPlan>(`/plans/week/${weekStart}/confirm`, {
+    method: 'POST',
+    body: '{}',
+  })
+}
+
 export function rerollItem(planId: string, itemId: string) {
   return request<WeekPlan>(`/plans/${planId}/items/${itemId}/reroll`, {
     method: 'POST',

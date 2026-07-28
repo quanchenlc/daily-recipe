@@ -164,6 +164,38 @@ a {
   font-size: 0.78rem;
 }
 
+.view-toggle {
+  position: relative;
+  z-index: 1;
+  display: inline-flex;
+  gap: 6px;
+  margin-top: 12px;
+  padding: 4px;
+  border-radius: 999px;
+  background: rgba(247, 251, 247, 0.12);
+  border: 1px solid rgba(247, 251, 247, 0.18);
+}
+
+.view-toggle-btn {
+  border: 0;
+  border-radius: 999px;
+  padding: 8px 14px;
+  background: transparent;
+  color: rgba(247, 251, 247, 0.82);
+  font-size: 0.86rem;
+  font-weight: 600;
+}
+
+.view-toggle-btn--active {
+  background: rgba(247, 251, 247, 0.95);
+  color: var(--sage-deep);
+}
+
+.view-toggle-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
 .btn {
   border: 0;
   border-radius: 999px;
@@ -508,6 +540,11 @@ a {
 .banner-err {
   background: rgba(207, 111, 51, 0.14);
   color: #8a3d16;
+}
+
+.banner-warn {
+  background: rgba(232, 137, 76, 0.16);
+  color: #8a4a12;
 }
 
 .empty {

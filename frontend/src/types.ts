@@ -56,10 +56,12 @@ export interface PlanItem {
   reason: string | null
 }
 
+export type PlanStatus = 'draft' | 'confirmed' | 'active'
+
 export interface WeekPlan {
   id: string
   weekStart: string
-  status: string
+  status: PlanStatus
   items: PlanItem[]
 }
 
@@ -67,6 +69,7 @@ export interface DayPlanView {
   date: string
   weekStart: string
   planId: string | null
+  weekStatus: PlanStatus | null
   hasMenu: boolean
   confirmed: boolean
   confirmedAt: string | null

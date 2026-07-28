@@ -6,7 +6,7 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Between, Repository } from 'typeorm';
+import { Between, In, Repository } from 'typeorm';
 import { LlmService } from '../llm/llm.service';
 import {
   DishCategory,
@@ -55,12 +55,13 @@ export class RecommendationService {
       relations: { items: { recipe: true } },
     });
     if (existing) {
+      await this.clearWeekConfirmations(weekStart, days);
       await this.plansRepo.remove(existing);
     }
 
     const plan = this.plansRepo.create({
       weekStart,
-      status: 'active',
+      status: 'draft',
       items: validated.map((item) =>
         this.itemsRepo.create({
           recipeId: item.recipeId,
@@ -116,6 +117,7 @@ export class RecommendationService {
       date: serveDate,
       weekStart,
       planId: plan?.id ?? null,
+      weekStatus: plan?.status ?? null,
       hasMenu: dayItems.length > 0,
       confirmed: Boolean(confirmation),
       confirmedAt: confirmation?.confirmedAt?.toISOString() ?? null,
@@ -123,35 +125,56 @@ export class RecommendationService {
     };
   }
 
-  async confirmDayMenu(serveDate: string) {
-    const today = this.formatDate(new Date());
-    if (serveDate !== today) {
-      throw new BadRequestException('只能确认今天的菜单');
+  async confirmWeekMenu(weekStartInput: string) {
+    const weekStart = weekStartInput || this.currentMonday();
+    const plan = await this.plansRepo.findOne({
+      where: { weekStart },
+      relations: { items: true },
+    });
+    if (!plan || plan.items.length === 0) {
+      throw new BadRequestException('该周还没有菜单，请先生成预设');
     }
 
+    plan.status = 'confirmed';
+    await this.plansRepo.save(plan);
+    await this.upsertDayConfirmations(
+      plan.id,
+      [...new Set(plan.items.map((item) => item.serveDate))],
+    );
+    return this.getPlanForWeek(weekStart);
+  }
+
+  async confirmDayMenu(serveDate: string) {
     const dayMenu = await this.getDayMenu(serveDate);
     if (!dayMenu.hasMenu || !dayMenu.planId) {
-      throw new BadRequestException('今天还没有菜单，请先生成');
+      throw new BadRequestException('这一天还没有菜单，请先生成');
     }
 
-    const existing = await this.confirmationsRepo.findOne({
-      where: { serveDate },
-    });
-    if (existing) {
-      if (existing.planId !== dayMenu.planId) {
-        existing.planId = dayMenu.planId;
-        await this.confirmationsRepo.save(existing);
-      }
-      return this.getDayMenu(serveDate);
-    }
-
-    await this.confirmationsRepo.save(
-      this.confirmationsRepo.create({
-        serveDate,
-        planId: dayMenu.planId,
-      }),
-    );
+    await this.upsertDayConfirmations(dayMenu.planId, [serveDate]);
     return this.getDayMenu(serveDate);
+  }
+
+  private async upsertDayConfirmations(planId: string, dates: string[]) {
+    for (const serveDate of dates) {
+      const existing = await this.confirmationsRepo.findOne({
+        where: { serveDate },
+      });
+      if (existing) {
+        existing.planId = planId;
+        await this.confirmationsRepo.save(existing);
+      } else {
+        await this.confirmationsRepo.save(
+          this.confirmationsRepo.create({ serveDate, planId }),
+        );
+      }
+    }
+  }
+
+  private async clearWeekConfirmations(weekStart: string, days: number) {
+    const dates = Array.from({ length: days }, (_, i) =>
+      this.addDays(weekStart, i),
+    );
+    await this.confirmationsRepo.delete({ serveDate: In(dates) });
   }
 
   async getPlan(id: string) {
