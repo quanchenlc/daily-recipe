@@ -15,7 +15,7 @@ export class FeedbackService {
     private readonly preferencesService: PreferencesService,
   ) {}
 
-  async create(recipeId: string, dto: CreateFeedbackDto) {
+  async create(userId: string, recipeId: string, dto: CreateFeedbackDto) {
     const recipe = await this.recipesService.findOne(recipeId);
     const feedback = await this.feedbackRepo.save(
       this.feedbackRepo.create({
@@ -24,7 +24,7 @@ export class FeedbackService {
         comment: dto.comment ?? null,
       }),
     );
-    await this.preferencesService.applyFeedback(recipe, feedback);
+    await this.preferencesService.applyFeedback(userId, recipe, feedback);
     return feedback;
   }
 

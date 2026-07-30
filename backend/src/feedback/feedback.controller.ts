@@ -1,4 +1,6 @@
 import { Body, Controller, Get, Param, ParseUUIDPipe, Post } from '@nestjs/common';
+import { CurrentUser } from '../auth/decorators/current-user.decorator';
+import { User } from '../auth/entities/user.entity';
 import { CreateFeedbackDto } from './dto/create-feedback.dto';
 import { FeedbackService } from './feedback.service';
 
@@ -13,9 +15,10 @@ export class FeedbackController {
 
   @Post()
   create(
+    @CurrentUser() user: User,
     @Param('recipeId', ParseUUIDPipe) recipeId: string,
     @Body() dto: CreateFeedbackDto,
   ) {
-    return this.feedbackService.create(recipeId, dto);
+    return this.feedbackService.create(user.id, recipeId, dto);
   }
 }
