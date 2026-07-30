@@ -13,8 +13,6 @@ import {
   slotDishCount,
 } from './preference.types';
 
-const DEFAULT_KEY = 'default';
-
 @Injectable()
 export class PreferencesService {
   constructor(
@@ -22,12 +20,12 @@ export class PreferencesService {
     private readonly prefsRepo: Repository<UserPreference>,
   ) {}
 
-  async getOrCreate() {
-    let pref = await this.prefsRepo.findOne({ where: { key: DEFAULT_KEY } });
+  async getOrCreate(userId: string) {
+    let pref = await this.prefsRepo.findOne({ where: { userId } });
     if (!pref) {
       pref = await this.prefsRepo.save(
         this.prefsRepo.create({
-          key: DEFAULT_KEY,
+          userId,
           likes: [],
           dislikes: [],
           constraints: [],
@@ -43,8 +41,8 @@ export class PreferencesService {
     return this.normalize(pref);
   }
 
-  async update(dto: UpdatePreferenceDto) {
-    const pref = await this.getOrCreate();
+  async update(userId: string, dto: UpdatePreferenceDto) {
+    const pref = await this.getOrCreate(userId);
     const adults = dto.adultsCount ?? pref.adultsCount;
     const elderly = dto.elderlyCount ?? pref.elderlyCount;
     const children = dto.childrenCount ?? pref.childrenCount;
@@ -77,8 +75,8 @@ export class PreferencesService {
     return normalizeMealConfig(pref.mealConfig);
   }
 
-  async applyFeedback(recipe: Recipe, feedback: Feedback) {
-    const pref = await this.getOrCreate();
+  async applyFeedback(userId: string, recipe: Recipe, feedback: Feedback) {
+    const pref = await this.getOrCreate(userId);
     const likes = new Set(pref.likes ?? []);
     const dislikes = new Set(pref.dislikes ?? []);
     const constraints = new Set(pref.constraints ?? []);

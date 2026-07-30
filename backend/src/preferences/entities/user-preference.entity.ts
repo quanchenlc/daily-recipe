@@ -2,19 +2,20 @@ import {
   Column,
   CreateDateColumn,
   Entity,
+  Index,
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
 import { MealConfig } from '../preference.types';
 
 @Entity('user_preferences')
+@Index(['userId'], { unique: true })
 export class UserPreference {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  /** Single-user MVP: always one row with key "default". */
-  @Column({ type: 'varchar', length: 64, unique: true, default: 'default' })
-  key: string;
+  @Column({ type: 'varchar', length: 36, name: 'user_id' })
+  userId: string;
 
   @Column({ type: 'json', nullable: true })
   likes: string[] | null;

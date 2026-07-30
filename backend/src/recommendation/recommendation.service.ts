@@ -45,15 +45,15 @@ export class RecommendationService {
     private readonly confirmationsRepo: Repository<DailyMenuConfirmation>,
   ) {}
 
-  async generateWeek(weekStartInput?: string) {
+  async generateWeek(userId: string, weekStartInput?: string) {
     const weekStart = weekStartInput || this.currentMonday();
     const days = Number(this.config.get('PLAN_DAYS', '7'));
-    const context = await this.buildContext(weekStart, days);
+    const context = await this.buildContext(userId, weekStart, days);
     const menu = await this.llm.generateMenu(context);
     const validated = await this.validateAndResolveItems(menu.items, context);
 
     const existing = await this.plansRepo.findOne({
-      where: { weekStart },
+      where: { weekStart, userId },
       relations: { items: { recipe: true } },
     });
     if (existing) {
@@ -61,6 +61,7 @@ export class RecommendationService {
     }
 
     const plan = this.plansRepo.create({
+      userId,
       weekStart,
       status: 'draft',
       items: validated.map((item) =>
@@ -76,17 +77,17 @@ export class RecommendationService {
       ),
     });
     const saved = await this.plansRepo.save(plan);
-    await this.appendHistory(validated);
-    return this.getPlan(saved.id);
+    await this.appendHistory(userId, validated);
+    return this.getPlan(userId, saved.id);
   }
 
-  async regenerateDay(serveDate: string) {
+  async regenerateDay(userId: string, serveDate: string) {
     const weekStart = this.mondayOf(serveDate);
     const planDays = Number(this.config.get('PLAN_DAYS', '7'));
-    const context = await this.buildContext(weekStart, planDays);
+    const context = await this.buildContext(userId, weekStart, planDays);
 
     let plan = await this.plansRepo.findOne({
-      where: { weekStart },
+      where: { weekStart, userId },
       relations: { items: { recipe: true } },
     });
 
@@ -111,6 +112,7 @@ export class RecommendationService {
     } else {
       plan = await this.plansRepo.save(
         this.plansRepo.create({
+          userId,
           weekStart,
           status: 'draft',
         }),
@@ -132,19 +134,19 @@ export class RecommendationService {
       ),
     );
 
-    await this.confirmationsRepo.delete({ serveDate });
-    await this.appendHistory(validated);
-    return this.getPlan(plan!.id);
+    await this.confirmationsRepo.delete({ serveDate, userId });
+    await this.appendHistory(userId, validated);
+    return this.getPlan(userId, plan!.id);
   }
 
-  async getCurrentPlan() {
-    return this.getPlanForWeek(this.currentMonday());
+  async getCurrentPlan(userId: string) {
+    return this.getPlanForWeek(userId, this.currentMonday());
   }
 
-  async getPlanForWeek(weekStartInput?: string) {
+  async getPlanForWeek(userId: string, weekStartInput?: string) {
     const weekStart = weekStartInput || this.currentMonday();
     const plan = await this.plansRepo.findOne({
-      where: { weekStart },
+      where: { weekStart, userId },
       relations: { items: { recipe: true } },
       order: { createdAt: 'DESC' },
     });
@@ -155,10 +157,10 @@ export class RecommendationService {
     return plan;
   }
 
-  async getDayMenu(serveDate: string) {
+  async getDayMenu(userId: string, serveDate: string) {
     const weekStart = this.mondayOf(serveDate);
     const plan = await this.plansRepo.findOne({
-      where: { weekStart },
+      where: { weekStart, userId },
       relations: { items: { recipe: true } },
       order: { createdAt: 'DESC' },
     });
@@ -168,7 +170,7 @@ export class RecommendationService {
       .sort(this.sortItems);
 
     const confirmation = await this.confirmationsRepo.findOne({
-      where: { serveDate },
+      where: { serveDate, userId },
     });
 
     return {
@@ -183,9 +185,10 @@ export class RecommendationService {
     };
   }
 
-  async getMenuHistory(limitInput = 30) {
+  async getMenuHistory(userId: string, limitInput = 30) {
     const limit = Math.min(Math.max(1, limitInput), 100);
     const rows = await this.confirmationsRepo.find({
+      where: { userId },
       order: { confirmedAt: 'DESC' },
       take: limit,
     });
@@ -202,9 +205,9 @@ export class RecommendationService {
       }));
   }
 
-  async getMenuHistoryDetail(serveDate: string) {
+  async getMenuHistoryDetail(userId: string, serveDate: string) {
     const row = await this.confirmationsRepo.findOne({
-      where: { serveDate },
+      where: { serveDate, userId },
     });
     if (!row?.snapshot?.length) {
       throw new NotFoundException('没有找到该日期的确认菜单');
@@ -217,10 +220,10 @@ export class RecommendationService {
     };
   }
 
-  async confirmWeekMenu(weekStartInput: string) {
+  async confirmWeekMenu(userId: string, weekStartInput: string) {
     const weekStart = weekStartInput || this.currentMonday();
     const plan = await this.plansRepo.findOne({
-      where: { weekStart },
+      where: { weekStart, userId },
       relations: { items: true },
     });
     if (!plan || plan.items.length === 0) {
@@ -230,25 +233,30 @@ export class RecommendationService {
     plan.status = 'confirmed';
     await this.plansRepo.save(plan);
     await this.upsertDayConfirmations(
+      userId,
       plan.id,
       [...new Set(plan.items.map((item) => item.serveDate))],
     );
-    return this.getPlanForWeek(weekStart);
+    return this.getPlanForWeek(userId, weekStart);
   }
 
-  async confirmDayMenu(serveDate: string) {
-    const dayMenu = await this.getDayMenu(serveDate);
+  async confirmDayMenu(userId: string, serveDate: string) {
+    const dayMenu = await this.getDayMenu(userId, serveDate);
     if (!dayMenu.hasMenu || !dayMenu.planId) {
       throw new BadRequestException('这一天还没有菜单，请先生成');
     }
 
-    await this.upsertDayConfirmations(dayMenu.planId, [serveDate]);
-    return this.getDayMenu(serveDate);
+    await this.upsertDayConfirmations(userId, dayMenu.planId, [serveDate]);
+    return this.getDayMenu(userId, serveDate);
   }
 
-  private async upsertDayConfirmations(planId: string, dates: string[]) {
+  private async upsertDayConfirmations(
+    userId: string,
+    planId: string,
+    dates: string[],
+  ) {
     const plan = await this.plansRepo.findOne({
-      where: { id: planId },
+      where: { id: planId, userId },
       relations: { items: { recipe: true } },
     });
     if (!plan) return;
@@ -260,7 +268,7 @@ export class RecommendationService {
       const snapshot = this.buildSnapshot(dayItems);
 
       const existing = await this.confirmationsRepo.findOne({
-        where: { serveDate },
+        where: { serveDate, userId },
       });
       if (existing) {
         existing.planId = planId;
@@ -268,7 +276,7 @@ export class RecommendationService {
         await this.confirmationsRepo.save(existing);
       } else {
         await this.confirmationsRepo.save(
-          this.confirmationsRepo.create({ serveDate, planId, snapshot }),
+          this.confirmationsRepo.create({ userId, serveDate, planId, snapshot }),
         );
       }
     }
@@ -288,9 +296,9 @@ export class RecommendationService {
     }));
   }
 
-  async getPlan(id: string) {
+  async getPlan(userId: string, id: string) {
     const plan = await this.plansRepo.findOne({
-      where: { id },
+      where: { id, userId },
       relations: { items: { recipe: true } },
     });
     if (!plan) {
@@ -300,15 +308,15 @@ export class RecommendationService {
     return plan;
   }
 
-  async rerollItem(planId: string, itemId: string) {
-    const plan = await this.getPlan(planId);
+  async rerollItem(userId: string, planId: string, itemId: string) {
+    const plan = await this.getPlan(userId, planId);
     const item = plan.items.find((i) => i.id === itemId);
     if (!item) {
       throw new NotFoundException(`Plan item ${itemId} not found`);
     }
 
     const days = Number(this.config.get('PLAN_DAYS', '7'));
-    const context = await this.buildContext(plan.weekStart, days);
+    const context = await this.buildContext(userId, plan.weekStart, days);
     const weekNames = plan.items
       .filter((i) => i.id !== item.id)
       .map((i) => i.recipe.name);
@@ -338,11 +346,12 @@ export class RecommendationService {
       recipeId: resolved.recipeId,
       reason: resolved.reason ?? '换菜',
     });
-    await this.appendHistory([resolved]);
-    return this.getPlan(planId);
+    await this.appendHistory(userId, [resolved]);
+    return this.getPlan(userId, planId);
   }
 
   private async appendHistory(
+    userId: string,
     items: Array<{
       date: string;
       mealSlot: MealSlot;
@@ -352,6 +361,7 @@ export class RecommendationService {
     await this.historyRepo.save(
       items.map((item) =>
         this.historyRepo.create({
+          userId,
           recipeId: item.recipeId,
           serveDate: item.date,
           mealSlot: item.mealSlot,
@@ -361,6 +371,7 @@ export class RecommendationService {
   }
 
   private async buildContext(
+    userId: string,
     weekStart: string,
     days: number,
   ): Promise<RecommendContext> {
@@ -369,7 +380,7 @@ export class RecommendationService {
     const rangeStart = this.addDays(weekStart, -(cooldownDays - 1));
 
     const recent = await this.historyRepo.find({
-      where: { serveDate: Between(rangeStart, rangeEnd) },
+      where: { userId, serveDate: Between(rangeStart, rangeEnd) },
       relations: { recipe: true },
     });
     const blockedRecipeNames = [
@@ -377,7 +388,7 @@ export class RecommendationService {
     ];
 
     const knownRecipes = await this.recipesService.findAll();
-    const pref = await this.preferencesService.getOrCreate();
+    const pref = await this.preferencesService.getOrCreate(userId);
     const mealConfig = this.preferencesService.getMealConfig(pref);
 
     return {

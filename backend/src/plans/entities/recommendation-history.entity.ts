@@ -15,6 +15,10 @@ export class RecommendationHistory {
   id: string;
 
   @Index()
+  @Column({ type: 'varchar', length: 36, name: 'user_id' })
+  userId: string;
+
+  @Index()
   @Column({ type: 'varchar', length: 36, name: 'recipe_id' })
   recipeId: string;
 
