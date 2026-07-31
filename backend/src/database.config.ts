@@ -1,6 +1,5 @@
 import { ConfigService } from '@nestjs/config';
 import { TypeOrmModuleOptions } from '@nestjs/typeorm';
-import { User } from './auth/entities/user.entity';
 import { Feedback } from './recipes/entities/feedback.entity';
 import { Recipe } from './recipes/entities/recipe.entity';
 import { PlanItem } from './plans/entities/plan-item.entity';
@@ -129,7 +128,6 @@ export function createTypeOrmOptions(
     password: db.password,
     database: db.database,
     entities: [
-      User,
       Recipe,
       Feedback,
       WeekPlan,

@@ -1,6 +1,4 @@
 import { Body, Controller, Get, Param, ParseUUIDPipe, Post, Query } from '@nestjs/common';
-import { CurrentUser } from '../auth/decorators/current-user.decorator';
-import { User } from '../auth/entities/user.entity';
 import { RecommendationService } from '../recommendation/recommendation.service';
 import { DayDatePipe } from './dto/day-date.param';
 import { GeneratePlanDto } from './dto/generate-plan.dto';
@@ -10,78 +8,61 @@ export class PlansController {
   constructor(private readonly recommendationService: RecommendationService) {}
 
   @Post('generate')
-  generate(@CurrentUser() user: User, @Body() dto: GeneratePlanDto) {
-    return this.recommendationService.generateWeek(user.id, dto.weekStart);
+  generate(@Body() dto: GeneratePlanDto) {
+    return this.recommendationService.generateWeek(dto.weekStart);
   }
 
   @Get('current')
-  current(@CurrentUser() user: User, @Query('weekStart') weekStart?: string) {
+  current(@Query('weekStart') weekStart?: string) {
     if (weekStart) {
-      return this.recommendationService.getPlanForWeek(user.id, weekStart);
+      return this.recommendationService.getPlanForWeek(weekStart);
     }
-    return this.recommendationService.getCurrentPlan(user.id);
+    return this.recommendationService.getCurrentPlan();
   }
 
   @Post('week/:weekStart/confirm')
-  confirmWeek(
-    @CurrentUser() user: User,
-    @Param('weekStart', DayDatePipe) weekStart: string,
-  ) {
-    return this.recommendationService.confirmWeekMenu(user.id, weekStart);
+  confirmWeek(@Param('weekStart', DayDatePipe) weekStart: string) {
+    return this.recommendationService.confirmWeekMenu(weekStart);
   }
 
   @Get('history')
-  history(@CurrentUser() user: User, @Query('limit') limit?: string) {
+  history(@Query('limit') limit?: string) {
     const parsed = limit ? Number(limit) : 30;
     return this.recommendationService.getMenuHistory(
-      user.id,
       Number.isFinite(parsed) ? parsed : 30,
     );
   }
 
   @Get('history/:date')
-  historyDetail(
-    @CurrentUser() user: User,
-    @Param('date', DayDatePipe) date: string,
-  ) {
-    return this.recommendationService.getMenuHistoryDetail(user.id, date);
+  historyDetail(@Param('date', DayDatePipe) date: string) {
+    return this.recommendationService.getMenuHistoryDetail(date);
   }
 
   @Get('day/:date')
-  dayMenu(
-    @CurrentUser() user: User,
-    @Param('date', DayDatePipe) date: string,
-  ) {
-    return this.recommendationService.getDayMenu(user.id, date);
+  dayMenu(@Param('date', DayDatePipe) date: string) {
+    return this.recommendationService.getDayMenu(date);
   }
 
   @Post('day/:date/regenerate')
-  regenerateDay(
-    @CurrentUser() user: User,
-    @Param('date', DayDatePipe) date: string,
-  ) {
-    return this.recommendationService.regenerateDay(user.id, date);
+  regenerateDay(@Param('date', DayDatePipe) date: string) {
+    return this.recommendationService.regenerateDay(date);
   }
 
   @Post('day/:date/confirm')
-  confirmDay(
-    @CurrentUser() user: User,
-    @Param('date', DayDatePipe) date: string,
-  ) {
-    return this.recommendationService.confirmDayMenu(user.id, date);
+  confirmDay(@Param('date', DayDatePipe) date: string) {
+    return this.recommendationService.confirmDayMenu(date);
   }
 
   @Get(':id')
-  one(@CurrentUser() user: User, @Param('id', ParseUUIDPipe) id: string) {
-    return this.recommendationService.getPlan(user.id, id);
+  one(@Param('id', ParseUUIDPipe) id: string) {
+    return this.recommendationService.getPlan(id);
   }
 
   @Post(':id/items/:itemId/reroll')
   reroll(
-    @CurrentUser() user: User,
     @Param('id', ParseUUIDPipe) id: string,
     @Param('itemId', ParseUUIDPipe) itemId: string,
   ) {
-    return this.recommendationService.rerollItem(user.id, id, itemId);
+    return this.recommendationService.rerollItem(id, itemId);
   }
 }

@@ -2,7 +2,6 @@ import {
   Column,
   CreateDateColumn,
   Entity,
-  Index,
   JoinColumn,
   ManyToOne,
   PrimaryGeneratedColumn,
@@ -11,15 +10,11 @@ import { WeekPlan } from './week-plan.entity';
 import type { ConfirmedMenuSnapshotItem } from '../types/confirmed-menu-snapshot';
 
 @Entity('daily_menu_confirmations')
-@Index(['userId', 'serveDate'], { unique: true })
 export class DailyMenuConfirmation {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @Column({ type: 'varchar', length: 36, name: 'user_id' })
-  userId: string;
-
-  @Column({ type: 'date', name: 'serve_date' })
+  @Column({ type: 'date', name: 'serve_date', unique: true })
   serveDate: string;
 
   @Column({ type: 'varchar', length: 36, name: 'plan_id', nullable: true })
