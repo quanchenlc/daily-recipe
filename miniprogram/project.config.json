@@ -1,0 +1,9 @@
+{
+  "description": "家常菜谱微信小程序（uni-app 编译产物请用 dist 目录）",
+  "setting": {
+    "urlCheck": false,
+    "es6": true,
+    "minified": true
+  },
+  "compileType": "miniprogram"
+}

@@ -11,6 +11,10 @@ node_modules
 .DS_Store
 dist
 *.local
+.env
+
+# WeChat devtools private config
+project.private.config.json
 
 # Editor directories and files
 .idea

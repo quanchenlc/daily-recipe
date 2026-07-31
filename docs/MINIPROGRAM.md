@@ -1,5 +1,10 @@
 # 微信小程序（uni-app）
 
+> **注意**：小程序与 JWT 多用户后端在分支 `cursor/wechat-auth-miniprogram-f7fd`。
+> H5 主线（`main` / `cursor/h5-stable-f7fd`）仍使用无登录的旧 API。
+
+详细开发说明见 [`miniprogram/README.md`](../miniprogram/README.md)。
+
 ## 你能先做的
 
 1. 在 `miniprogram/src/manifest.json` 的 `mp-weixin.appid` 填入你的小程序 AppID
